@@ -491,10 +491,11 @@ describe("RangeBet System", function () {
       // User1 claims rewards first time
       await rangeBetManager.connect(user1).claimReward(marketId, 0);
 
-      // Try to claim again
+      // Try to claim again - should revert with "No tokens to claim" instead of "Already claimed"
+      // since tokens are now burned after claiming
       await expect(
         rangeBetManager.connect(user1).claimReward(marketId, 0)
-      ).to.be.revertedWith("Already claimed");
+      ).to.be.revertedWith("No tokens to claim");
     });
 
     it("Should burn tokens after claiming", async function () {

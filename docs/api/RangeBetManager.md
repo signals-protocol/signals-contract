@@ -31,7 +31,6 @@ struct Market {
     uint256 collateralBalance;      // 담보 토큰 총액
     int256 winningBin;              // 승리한 빈 (마켓 종료 후 설정)
     mapping(int256 => uint256) q;   // 각 빈별 토큰 수량
-    mapping(address => mapping(int256 => bool)) hasClaimed; // 보상 청구 여부 추적
 }
 ```
 
@@ -166,8 +165,11 @@ function claimReward(uint256 marketId, int256 binIndex) external nonReentrant
 
 - 마켓이 존재하고 종료되었어야 합니다.
 - 청구하려는 빈은 승리한 빈이어야 합니다.
-- 사용자는 해당 빈에서 아직 보상을 청구하지 않았어야 합니다.
 - 사용자는 해당 빈의 토큰을 보유하고 있어야 합니다.
+
+#### 중복 청구 방지
+
+이 함수는 사용자의 토큰을 완전히 소각하기 때문에, 토큰을 한 번 청구하면 잔액이 0이 되어 중복 청구가 자연스럽게 방지됩니다. 두 번째 청구 시도는 `No tokens to claim` 오류로 실패합니다.
 
 #### 이벤트
 
@@ -261,7 +263,6 @@ error ArrayLengthMismatch();
 error ZeroAmount();
 error CollateralTransferFailed();
 error NotWinningBin();
-error AlreadyClaimed();
 error NoTokens();
 error CollateralTooHigh();
 error MinTickGreaterThanMaxTick();

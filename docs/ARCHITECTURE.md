@@ -53,7 +53,6 @@ struct Market {
     uint256 collateralBalance; // 담보 토큰 총액
     int256 winningBin;       // 승리 빈 (마켓 종료 후 설정)
     mapping(int256 => uint256) q; // 각 빈별 토큰 수량
-    mapping(address => mapping(int256 => bool)) hasClaimed; // 보상 청구 여부 추적
 }
 
 // 마켓 매핑
@@ -208,7 +207,7 @@ function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uin
    - `maxCollateral` 매개변수로 사용자는 최대 지불 의향 금액을 지정할 수 있습니다.
 
 4. **이중 청구 방지**:
-   - `hasClaimed` 매핑으로 사용자가 보상을 두 번 청구하는 것을 방지합니다.
+   - 토큰 소각 방식으로 사용자가 보상을 두 번 청구하는 것을 방지합니다.
 
 ## 가스 최적화
 

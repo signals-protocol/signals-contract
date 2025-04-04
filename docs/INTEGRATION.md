@@ -352,8 +352,8 @@ try {
     // 최대 담보 초과
   } else if (errorMessage.includes("Not winning bin")) {
     // 승리 빈이 아님
-  } else if (errorMessage.includes("Already claimed")) {
-    // 이미 보상 청구됨
+  } else if (errorMessage.includes("No tokens to claim")) {
+    // 청구할 토큰이 없음 (이미 청구했거나 토큰을 보유하지 않음)
   } else {
     // 기타 오류
     console.error("거래 오류:", errorMessage);

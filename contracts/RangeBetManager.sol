@@ -27,7 +27,6 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         uint256 collateralBalance; // Total collateral balance in the market
         int256 winningBin;       // The winning bin (set when market is closed)
         mapping(int256 => uint256) q; // Quantity of tokens in each bin
-        mapping(address => mapping(int256 => bool)) hasClaimed; // Track who has claimed for which bin
     }
 
     // State variables
@@ -176,7 +175,6 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         Market storage market = markets[marketId];
         require(market.closed, "Market is not closed");
         require(binIndex == market.winningBin, "Not the winning bin");
-        require(!market.hasClaimed[msg.sender][binIndex], "Already claimed");
         
         uint256 tokenId = rangeBetToken.encodeTokenId(marketId, binIndex);
         uint256 userBalance = rangeBetToken.balanceOf(msg.sender, tokenId);
@@ -185,10 +183,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         uint256 totalWinningTokens = market.q[binIndex];
         uint256 reward = (userBalance * market.collateralBalance) / totalWinningTokens;
         
-        // Mark as claimed
-        market.hasClaimed[msg.sender][binIndex] = true;
-        
-        // Burn the tokens
+        // Burn the tokens - this naturally prevents double claiming since the balance will be 0 after claiming
         rangeBetToken.burn(msg.sender, tokenId, userBalance);
         
         // Update market state
@@ -279,16 +274,5 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         if (binIndex % int256(market.tickSpacing) != 0) return 0;
         
         return RangeBetMath.calculateCost(amount, market.q[binIndex], market.T);
-    }
-
-    /**
-     * @dev Checks if a user has claimed rewards for a specific bin
-     * @param marketId The ID of the market
-     * @param user The user address
-     * @param binIndex The bin index
-     * @return Whether the user has claimed
-     */
-    function hasClaimed(uint256 marketId, address user, int256 binIndex) external view returns (bool) {
-        return markets[marketId].hasClaimed[user][binIndex];
     }
 } 
