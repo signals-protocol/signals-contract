@@ -1,41 +1,88 @@
 import { ethers, network } from "hardhat";
 
 async function main() {
-  console.log("배포를 시작합니다...");
+  console.log("Deployment started...");
 
-  // 초기 발행량을 100만 토큰으로 설정
-  const initialSupply = ethers.parseEther("1000000");
+  // Deploy a mock ERC20 token to use as collateral
+  console.log("Deploying MockCollateralToken...");
+  const MockToken = await ethers.getContractFactory("MockCollateralToken");
+  const collateralToken = await MockToken.deploy(
+    "Mock Collateral",
+    "MCOL",
+    ethers.parseEther("10000000")
+  );
+  await collateralToken.waitForDeployment();
+  const collateralTokenAddress = await collateralToken.getAddress();
+  console.log("MockCollateralToken deployed to:", collateralTokenAddress);
 
-  // 배포 계정 가져오기
-  const [deployer] = await ethers.getSigners();
-  console.log("배포 계정:", deployer.address);
+  // Deploy RangeBetMath library
+  console.log("Deploying RangeBetMath library...");
+  const RangeBetMathFactory = await ethers.getContractFactory("RangeBetMath");
+  const rangeBetMath = await RangeBetMathFactory.deploy();
+  await rangeBetMath.waitForDeployment();
+  const rangeBetMathAddress = await rangeBetMath.getAddress();
+  console.log("RangeBetMath deployed to:", rangeBetMathAddress);
 
-  // 배포 전 잔액 확인
-  const balance = await ethers.provider.getBalance(deployer.address);
-  console.log("배포 계정 잔액:", ethers.formatEther(balance), "ETH");
+  // Deploy RangeBetManager with library linking
+  console.log("Deploying RangeBetManager...");
+  const RangeBetManagerFactory = await ethers.getContractFactory(
+    "RangeBetManager",
+    {
+      libraries: {
+        RangeBetMath: rangeBetMathAddress,
+      },
+    }
+  );
 
-  // 컨트랙트 배포
-  console.log("SampleToken 컨트랙트 배포 중...");
-  const SampleToken = await ethers.getContractFactory("SampleToken");
-  const token = await SampleToken.deploy(initialSupply);
+  const baseURI = "https://rangebet.example/api/token/";
+  const rangeBetManager = await RangeBetManagerFactory.deploy(
+    collateralTokenAddress,
+    baseURI
+  );
+  await rangeBetManager.waitForDeployment();
+  const rangeBetManagerAddress = await rangeBetManager.getAddress();
+  console.log("RangeBetManager deployed to:", rangeBetManagerAddress);
 
-  await token.waitForDeployment();
+  try {
+    // Try to get the RangeBetToken address
+    // This might fail if the contract interface doesn't match TypeScript expectations
+    const rangeBetTokenAddress = await rangeBetManager.rangeBetToken();
+    console.log("RangeBetToken deployed to:", rangeBetTokenAddress);
 
-  const tokenAddress = await token.getAddress();
-  console.log("SampleToken 배포 완료:", tokenAddress);
+    // Create a sample market
+    console.log("Creating a sample market...");
+    const tickSpacing = 60;
+    const minTick = -360;
+    const maxTick = 360;
 
-  console.log("초기 발행량:", ethers.formatEther(initialSupply), "STKN");
+    const createMarketTx = await rangeBetManager.createMarket(
+      tickSpacing,
+      minTick,
+      maxTick
+    );
+    await createMarketTx.wait();
+    console.log("Sample market created with parameters:");
+    console.log("- tickSpacing:", tickSpacing);
+    console.log("- minTick:", minTick);
+    console.log("- maxTick:", maxTick);
+  } catch (error) {
+    console.error("Error with contract interaction:", error);
+    console.log(
+      "Note: TypeScript types might not match the actual contract. This is expected during development."
+    );
+  }
 
-  // 배포된 컨트랙트 정보 출력
+  // Output deployment information
   console.log("--------------------");
-  console.log("배포 정보:");
-  console.log("네트워크:", network.name);
-  console.log("컨트랙트 주소:", tokenAddress);
-  console.log("배포자:", deployer.address);
+  console.log("Deployment Information:");
+  console.log("Network:", network.name);
+  console.log("Collateral Token:", collateralTokenAddress);
+  console.log("RangeBetMath Library:", rangeBetMathAddress);
+  console.log("RangeBetManager:", rangeBetManagerAddress);
   console.log("--------------------");
 }
 
-// 스크립트 실행과 에러 핸들링
+// Execute script and handle errors
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
