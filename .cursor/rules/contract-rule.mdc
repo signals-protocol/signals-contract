@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- use yarn, instead of npm
+- use english as a output(not a chat, only file, code)
+- ehters v6. not a v5.
