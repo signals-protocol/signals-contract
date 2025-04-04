@@ -31,10 +31,19 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "test:gas": "REPORT_GAS=true hardhat test",
+    "test:market": "hardhat test --grep \"Market Creation\"",
+    "test:token": "hardhat test --grep \"Buying Tokens\"",
+    "test:math": "hardhat test --grep \"formula\"",
+    "test:claim": "hardhat test --grep \"Claiming Rewards\"",
+    "coverage": "hardhat coverage",
     "node": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
-    "clean": "hardhat clean"
+    "interact:local": "hardhat run scripts/interact.ts --network localhost",
+    "interact:sepolia": "hardhat run scripts/interact.ts --network sepolia",
+    "clean": "hardhat clean",
+    "format": "prettier --write \"contracts/**/*.sol\" \"test/**/*.ts\" \"scripts/**/*.ts\"",
+    "lint": "solhint \"contracts/**/*.sol\""
   },
   "dependencies": {
     "@prb/math": "^4.1.0"
