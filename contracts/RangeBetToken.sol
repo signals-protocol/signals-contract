@@ -50,6 +50,17 @@ contract RangeBetToken is ERC1155 {
     }
 
     /**
+     * @dev Mints multiple tokens for a user in batch
+     * @param to Recipient address
+     * @param ids Array of token IDs (encoded market ID and bin index)
+     * @param amounts Array of token amounts to mint
+     */
+    function mintBatch(address to, uint256[] calldata ids, uint256[] calldata amounts) external onlyManager {
+        _mintBatch(to, ids, amounts, "");
+        // ERC1155 표준에서는 TransferBatch 이벤트가 자동으로 발행됩니다.
+    }
+
+    /**
      * @dev Burns tokens from a user
      * @param from Address to burn tokens from
      * @param id Token ID (encoded market ID and bin index)

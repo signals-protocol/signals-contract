@@ -109,15 +109,19 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         uint256 totalCost = 0;
         uint256 Tcurrent = market.T;
         
-        // Process each bin
-        for (uint256 i = 0; i < binIndices.length; i++) {
+        // 1) Prepare: create tokenIds and mintedAmounts arrays
+        uint256 len = binIndices.length;
+        uint256[] memory tokenIds = new uint256[](len);
+        uint256[] memory mintedAmounts = new uint256[](len);
+        
+        // 2) Process each bin
+        for (uint256 i = 0; i < len; i++) {
             int256 binIndex = binIndices[i];
             uint256 amount = amounts[i];
             
             // Skip if amount is 0
             if (amount == 0) continue;
             
-            // Validate the bin index
             require(binIndex % int256(market.tickSpacing) == 0, "Bin index must be a multiple of tick spacing");
             require(binIndex >= market.minTick && binIndex <= market.maxTick, "Bin index out of range");
             
@@ -130,9 +134,9 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
             Tcurrent += amount;
             totalCost += cost;
             
-            // Mint tokens to the buyer
-            uint256 tokenId = rangeBetToken.encodeTokenId(marketId, binIndex);
-            rangeBetToken.mint(msg.sender, tokenId, amount);
+            // Save tokenId and mintedAmount
+            tokenIds[i] = rangeBetToken.encodeTokenId(marketId, binIndex);
+            mintedAmounts[i] = amount;
         }
         
         // Check if the cost is within the user's limit
@@ -144,6 +148,9 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         
         // Transfer collateral from user to contract
         collateralToken.safeTransferFrom(msg.sender, address(this), totalCost);
+        
+        // Execute batch minting
+        rangeBetToken.mintBatch(msg.sender, tokenIds, mintedAmounts);
         
         emit TokensBought(marketId, msg.sender, binIndices, amounts, totalCost);
     }
