@@ -35,5 +35,8 @@
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
     "clean": "hardhat clean"
+  },
+  "dependencies": {
+    "@prb/math": "^4.1.0"
   }
 }
