@@ -40,6 +40,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     event TokensBought(uint256 indexed marketId, address indexed buyer, int256[] binIndices, uint256[] amounts, uint256 totalCost);
     event MarketClosed(uint256 indexed marketId, int256 winningBin);
     event RewardClaimed(uint256 indexed marketId, address indexed claimer, int256 binIndex, uint256 amount);
+    event CollateralWithdrawn(address indexed to, uint256 amount);
 
     /**
      * @dev Constructor - initializes contracts and owner
@@ -281,5 +282,18 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         if (binIndex % int256(market.tickSpacing) != 0) return 0;
         
         return RangeBetMath.calculateCost(amount, market.q[binIndex], market.T);
+    }
+
+    /**
+     * @dev Withdraws all collateral from the contract
+     * @param to The address to which the collateral will be transferred
+     */
+    function withdrawAllCollateral(address to) external onlyOwner {
+        uint256 amount = collateralToken.balanceOf(address(this));
+        require(amount > 0, "No collateral to withdraw");
+        
+        collateralToken.safeTransfer(to, amount);
+        
+        emit CollateralWithdrawn(to, amount);
     }
 } 

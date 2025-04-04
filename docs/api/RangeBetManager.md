@@ -41,6 +41,7 @@ event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTic
 event TokensPurchased(uint256 indexed marketId, address indexed buyer, int256[] binIndices, uint256[] amounts, uint256 collateralAmount);
 event MarketClosed(uint256 indexed marketId, int256 winningBin);
 event RewardClaimed(uint256 indexed marketId, address indexed claimer, int256 binIndex, uint256 tokenAmount, uint256 rewardAmount);
+event CollateralWithdrawn(address indexed to, uint256 amount);
 ```
 
 ## 생성자
@@ -175,6 +176,27 @@ function claimReward(uint256 marketId, int256 binIndex) external nonReentrant
 
 - `RewardClaimed`: 보상 청구 시 발생합니다.
 
+### withdrawAllCollateral
+
+```solidity
+function withdrawAllCollateral(address to) external onlyOwner
+```
+
+컨트랙트에 있는 모든 담보 토큰을 인출합니다.
+
+#### 매개변수
+
+- `to`: 담보를 전송할 주소
+
+#### 조건
+
+- 함수 호출자가 컨트랙트 소유자여야 합니다.
+- 인출할 담보 토큰이 존재해야 합니다.
+
+#### 이벤트
+
+- `CollateralWithdrawn`: 담보 인출 시 발생합니다.
+
 ## View 함수
 
 ### getBinQuantity
@@ -206,6 +228,16 @@ function validateBinIndex(uint256 marketId, int256 binIndex) public view
 
 - `marketId`: 마켓 ID
 - `binIndex`: 확인할 빈 인덱스
+
+### 담보 인출
+
+```solidity
+// 컨트랙트 인스턴스 가져오기
+RangeBetManager manager = RangeBetManager(managerAddress);
+
+// 모든 담보 인출 (소유자만 가능)
+manager.withdrawAllCollateral(ownerAddress);
+```
 
 ## 내부 함수
 

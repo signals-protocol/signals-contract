@@ -159,6 +159,16 @@ async function claimReward(marketId: number, binIndex: number) {
 }
 ```
 
+### 모든 담보 인출 (관리자 전용)
+
+```typescript
+async function withdrawAllCollateral(to: string) {
+  // 소유자/관리자만 호출할 수 있음
+  const tx = await managerContract.withdrawAllCollateral(to);
+  return await tx.wait();
+}
+```
+
 ## 스마트 컨트랙트 통합
 
 다른 스마트 컨트랙트에서 RangeBet과 통합하려면:
@@ -199,6 +209,8 @@ interface IRangeBetManager {
         uint256 collateralBalance,
         int256 winningBin
     );
+
+    function withdrawAllCollateral(address to) external;
 }
 
 interface IRangeBetToken {
