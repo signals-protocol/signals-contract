@@ -176,3 +176,6 @@ ignition/deployments/chain-31337
 
 # 쉘 스크립트 파일 제거
 *.sh
+
+# Development scripts
+scripts/dev/

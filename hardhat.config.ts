@@ -10,6 +10,14 @@ const PRIVATE_KEY =
 // Rootstock 테스트넷 RPC URL
 const ROOTSTOCK_TESTNET_URL = "https://public-node.testnet.rsk.co";
 
+// Polygon Amoy 테스트넷 RPC URL
+const POLYGON_AMOY_URL =
+  process.env.POLYGON_AMOY_URL || "https://rpc-amoy.polygon.technology";
+
+// Citrea 테스트넷 RPC URL
+const CITREA_TESTNET_URL =
+  process.env.CITREA_TESTNET_URL || "https://rpc.testnet.citrea.xyz";
+
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.28",
@@ -34,6 +42,18 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY],
       chainId: 31,
       gasPrice: 60000000,
+    },
+    polygonAmoy: {
+      url: POLYGON_AMOY_URL,
+      accounts: [PRIVATE_KEY],
+      chainId: 80002,
+      gasPrice: "auto",
+    },
+    citreaTestnet: {
+      url: CITREA_TESTNET_URL,
+      accounts: [PRIVATE_KEY],
+      chainId: 5115,
+      gasPrice: "auto",
     },
   },
   gasReporter: {

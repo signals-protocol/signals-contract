@@ -8,8 +8,8 @@ async function main() {
   console.log("Deploying MockCollateralToken...");
   const MockToken = await ethers.getContractFactory("MockCollateralToken");
   const collateralToken = await MockToken.deploy(
-    "Mock Collateral",
-    "MCOL",
+    "USDC",
+    "USDC",
     ethers.parseEther("100000000000000")
   );
 
