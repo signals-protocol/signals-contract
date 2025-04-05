@@ -70,19 +70,10 @@ library RangeBetMath {
         
         // Define search range
         uint256 left = 0;
-        uint256 right = cost * 2; // Start with a reasonable upper bound
+        uint256 right = (q > 0) ? (T * cost) / q : type(uint256).max;
         
-        // If q > 0, we can set a better upper bound based on the formula
-        if (q > 0) {
-            // For q > 0, an approximation is (T * cost) / q
-            uint256 approxUpperBound = (T * cost) / q;
-            if (approxUpperBound > 0) {
-                right = approxUpperBound;
-            }
-        }
-        
-        // Binary search with a maximum of 100 iterations
-        uint256 maxIterations = 100;
+        // Binary search with a maximum of 256 iterations
+        uint256 maxIterations = 256;
         
         // Pre-calculate costs for boundary conditions to avoid shadowing
         uint256 leftCost;
