@@ -176,7 +176,7 @@ describe("Token Operations", function () {
       await expect(
         env.rangeBetManager.connect(env.user1).buyTokens(
           env.marketId,
-          [500], // Outside the range (-360 to 360)
+          [420], // Outside the range (-360 to 360), but is a multiple of tickSpacing (60)
           [ethers.parseEther("100")],
           ethers.parseEther("150")
         )

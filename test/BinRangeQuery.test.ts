@@ -135,4 +135,166 @@ describe("Bin Range Query", function () {
       ).to.be.revertedWith("toBinIndex not multiple of tickSpacing");
     });
   });
+
+  describe("calculateXForBin", function () {
+    it("Should calculate the correct amount of tokens for a given cost", async function () {
+      // First, let's buy tokens to set up a market state
+      await env.rangeBetManager
+        .connect(env.user1)
+        .buyTokens(
+          env.marketId,
+          [0],
+          [ethers.parseEther("100")],
+          ethers.parseEther("150")
+        );
+
+      // Get the cost for buying 50 tokens in bin 0
+      const amount = ethers.parseEther("50");
+      const cost = await env.rangeBetManager.calculateBinCost(
+        env.marketId,
+        0,
+        amount
+      );
+
+      // Now, calculate how many tokens we can get for that cost
+      const calculatedX = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        0,
+        cost
+      );
+
+      // Should return approximately the same amount (with small rounding differences)
+      // Due to binary search approximation and fixed-point math, we allow a small deviation
+      const diff = calculatedX - amount;
+      expect(Math.abs(Number(diff))).to.be.lessThan(
+        Number(ethers.parseEther("0.001"))
+      );
+    });
+
+    it("Should handle empty market case correctly", async function () {
+      // In an empty market (T=0), the cost equals the amount
+      const cost = ethers.parseEther("100");
+      const calculatedX = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        0,
+        cost
+      );
+
+      expect(calculatedX).to.equal(cost);
+    });
+
+    it("Should handle 'q = T' case correctly", async function () {
+      // When q = T, cost equals the amount
+      // First buy tokens to make q = T
+      await env.rangeBetManager
+        .connect(env.user1)
+        .buyTokens(
+          env.marketId,
+          [0],
+          [ethers.parseEther("100")],
+          ethers.parseEther("150")
+        );
+
+      // Now the market has q = 100 at bin 0 and T = 100 total
+      const cost = ethers.parseEther("50");
+      const calculatedX = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        0,
+        cost
+      );
+
+      // For q = T, the calculation should be close to cost
+      expect(calculatedX).to.be.closeTo(
+        cost,
+        Number(ethers.parseEther("0.001"))
+      );
+    });
+
+    it("Should return 0 for inactive or closed markets", async function () {
+      // Deactivate the market
+      await env.rangeBetManager.deactivateMarket(env.marketId);
+
+      // Should return 0 for inactive market
+      const calculatedX = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        0,
+        ethers.parseEther("100")
+      );
+
+      expect(calculatedX).to.equal(0);
+
+      // Reactivate and close the market
+      await env.rangeBetManager.activateMarket(env.marketId);
+      await env.rangeBetManager.closeMarket(env.marketId, 0);
+
+      // Should return 0 for closed market
+      const calculatedX2 = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        0,
+        ethers.parseEther("100")
+      );
+
+      expect(calculatedX2).to.equal(0);
+    });
+
+    it("Should return 0 for invalid bin indices", async function () {
+      // Out of range bin
+      const calculatedX1 = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        -420, // minTick(-360)보다 작음
+        ethers.parseEther("100")
+      );
+
+      expect(calculatedX1).to.equal(0);
+
+      // Not a multiple of tick spacing
+      const calculatedX2 = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        61, // 60의 배수가 아님
+        ethers.parseEther("100")
+      );
+
+      expect(calculatedX2).to.equal(0);
+    });
+
+    it("Should correctly calculate X for different bin states", async function () {
+      // Set up market with different bin states
+      await env.rangeBetManager
+        .connect(env.user1)
+        .buyTokens(
+          env.marketId,
+          [-120, 0, 120],
+          [
+            ethers.parseEther("50"),
+            ethers.parseEther("100"),
+            ethers.parseEther("150"),
+          ],
+          ethers.parseEther("400")
+        );
+
+      // Test for different bins
+      const cost = ethers.parseEther("10");
+
+      // Different bins will give different token amounts for the same cost
+      const xForBin1 = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        -120,
+        cost
+      );
+      const xForBin2 = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        0,
+        cost
+      );
+      const xForBin3 = await env.rangeBetManager.calculateXForBin(
+        env.marketId,
+        120,
+        cost
+      );
+
+      // The bin with higher tokens should return less for the same cost
+      expect(xForBin1).to.be.gt(xForBin2);
+      expect(xForBin2).to.be.gt(xForBin3);
+    });
+  });
 });

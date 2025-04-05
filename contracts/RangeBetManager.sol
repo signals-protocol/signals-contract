@@ -297,6 +297,22 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @dev Calculates the amount of tokens that can be bought with the given cost for a specific bin
+     * @param marketId The ID of the market
+     * @param binIndex The bin index
+     * @param cost The amount of collateral to spend
+     * @return The amount of tokens that can be bought with the given cost
+     */
+    function calculateXForBin(uint256 marketId, int256 binIndex, uint256 cost) external view returns (uint256) {
+        Market storage market = markets[marketId];
+        if (!market.active || market.closed) return 0;
+        if (binIndex < market.minTick || binIndex > market.maxTick) return 0;
+        if (binIndex % int256(market.tickSpacing) != 0) return 0;
+        
+        return RangeBetMath.calculateX(cost, market.q[binIndex], market.T);
+    }
+
+    /**
      * @dev Withdraws all collateral from the contract
      * @param to The address to which the collateral will be transferred
      */

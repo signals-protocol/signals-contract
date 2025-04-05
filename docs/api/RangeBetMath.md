@@ -108,6 +108,99 @@ function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uin
 }
 ```
 
+### calculateX
+
+```solidity
+function calculateX(
+    uint256 cost,
+    uint256 q,
+    uint256 T
+) public pure returns (uint256)
+```
+
+Calculates the amount of tokens (x) that can be purchased with a given cost, using binary search. This is the inverse of the `calculateCost` function.
+
+#### Parameters
+
+- `cost`: Collateral token amount a user wants to spend
+- `q`: Current token quantity in the bin
+- `T`: Total token supply for the market
+
+#### Return Value
+
+- The maximum token quantity that can be purchased with the given cost
+
+#### Special Cases
+
+- If `cost == 0`, returns 0.
+- If `T == 0` (first bet in the market), returns cost directly.
+
+#### Implementation Details
+
+```solidity
+function calculateX(uint256 cost, uint256 q, uint256 T) public pure returns (uint256) {
+    if (cost == 0) return 0;
+    if (T == 0) return cost; // Special case: first bet in the market
+
+    // Define search range
+    uint256 left = 0;
+    uint256 right = cost * 2; // Start with a reasonable upper bound
+
+    // If q > 0, we can set a better upper bound based on the formula
+    if (q > 0) {
+        // For q > 0, an approximation is (T * cost) / q
+        uint256 approxUpperBound = (T * cost) / q;
+        if (approxUpperBound > 0) {
+            right = approxUpperBound;
+        }
+    }
+
+    // Binary search with a maximum of 100 iterations
+    uint256 maxIterations = 100;
+    for (uint256 i = 0; i < maxIterations; i++) {
+        uint256 mid = (left + right) / 2;
+
+        // Calculate cost for the mid value
+        uint256 calculatedCost = calculateCost(mid, q, T);
+
+        // If we found an exact match or we're at the precision limit
+        if (calculatedCost == cost || right - left <= 1) {
+            // Handle precision limit case
+            if (right - left <= 1) {
+                uint256 leftCost = calculateCost(left, q, T);
+                uint256 rightCost = calculateCost(right, q, T);
+
+                // Return the value that gives cost closest to target
+                if (cost - leftCost < rightCost - cost) {
+                    return left;
+                } else {
+                    return right;
+                }
+            }
+            return mid;
+        }
+
+        // Adjust search range
+        if (calculatedCost < cost) {
+            left = mid;
+        } else {
+            right = mid;
+        }
+    }
+
+    // After max iterations, return the best approximation
+    uint256 leftCost = calculateCost(left, q, T);
+    uint256 rightCost = calculateCost(right, q, T);
+
+    // Return the value that gives cost closest to target
+    if (cost - leftCost < rightCost - cost) {
+        return left;
+    } else {
+        return right;
+    }
+}
+```
+
 ## Usage Examples
 
 ### Usage in RangeBetManager
@@ -128,6 +221,15 @@ contract RangeBetManager {
     ) internal view returns (uint256) {
         // Calculate cost using RangeBetMath library
         return RangeBetMath.calculateCost(amount, binQuantity, totalSupply);
+    }
+
+    function _calculateTokensForCost(
+        uint256 cost,
+        uint256 binQuantity,
+        uint256 totalSupply
+    ) internal view returns (uint256) {
+        // Calculate tokens that can be bought with the given cost
+        return RangeBetMath.calculateX(cost, binQuantity, totalSupply);
     }
 
     // ...
@@ -154,6 +256,21 @@ contract ExampleContract {
             marketTotalSupply
         );
     }
+
+    // Example of calculating tokens for a given cost
+    function calculateExampleTokens() public pure returns (uint256) {
+        uint256 costToSpend = 95.3 * 10**18;  // 95.3 tokens worth of cost
+        uint256 currentBinQuantity = 500 * 10**18;  // 500 tokens currently in the bin
+        uint256 marketTotalSupply = 1000 * 10**18;  // 1000 tokens total in the market
+
+        // Calculate tokens that can be bought
+        return RangeBetMath.calculateX(
+            costToSpend,
+            currentBinQuantity,
+            marketTotalSupply
+        );
+        // Should return approximately 100 tokens
+    }
 }
 ```
 
@@ -176,6 +293,7 @@ The RangeBetMath library includes complex mathematical operations, so the gas co
 
 - Due to precision limitations in the PRBMath library, approximate values may be returned for extreme values.
 - Very large token quantities (> 1e27) may cause overflow, so it's recommended to use within a reasonable range.
+- The `calculateX` function uses binary search with a limited number of iterations, so results may have small approximation errors.
 
 ## Sample Calculations
 

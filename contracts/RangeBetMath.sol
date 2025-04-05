@@ -55,4 +55,82 @@ library RangeBetMath {
         // Convert back to uint256
         return unwrap(cost);
     }
+    
+    /**
+     * @dev Calculates the amount of tokens (x) that can be bought with the given cost
+     * using binary search. This is the reverse of the cost calculation formula.
+     * @param cost The collateral cost user is willing to pay
+     * @param q The current quantity of tokens in the bin
+     * @param T The total supply of tokens in the market
+     * @return x The amount of tokens (x) that can be bought with the given cost
+     */
+    function calculateX(uint256 cost, uint256 q, uint256 T) public pure returns (uint256) {
+        if (cost == 0) return 0;
+        if (T == 0) return cost; // Special case: first bet in the market
+        
+        // Define search range
+        uint256 left = 0;
+        uint256 right = cost * 2; // Start with a reasonable upper bound
+        
+        // If q > 0, we can set a better upper bound based on the formula
+        if (q > 0) {
+            // For q > 0, an approximation is (T * cost) / q
+            uint256 approxUpperBound = (T * cost) / q;
+            if (approxUpperBound > 0) {
+                right = approxUpperBound;
+            }
+        }
+        
+        // Binary search with a maximum of 100 iterations
+        uint256 maxIterations = 100;
+        
+        // Pre-calculate costs for boundary conditions to avoid shadowing
+        uint256 leftCost;
+        uint256 rightCost;
+        
+        for (uint256 i = 0; i < maxIterations; i++) {
+            uint256 mid = (left + right) / 2;
+            
+            // Calculate cost for the mid value
+            uint256 calculatedCost = calculateCost(mid, q, T);
+            
+            // If we found an exact match or we're at the precision limit
+            if (calculatedCost == cost || right - left <= 1) {
+                // If we're at precision limit, return the value that gives cost closest to target
+                if (right - left <= 1) {
+                    leftCost = calculateCost(left, q, T);
+                    rightCost = calculateCost(right, q, T);
+                    
+                    if (leftCost == cost) return left;
+                    if (rightCost == cost) return right;
+                    
+                    // Return the value that gives cost closest to target
+                    if (cost > leftCost && cost > rightCost) {
+                        return (rightCost > leftCost) ? right : left;
+                    } else {
+                        return (cost - leftCost < rightCost - cost) ? left : right;
+                    }
+                }
+                return mid;
+            }
+            
+            // Adjust search range
+            if (calculatedCost < cost) {
+                left = mid;
+            } else {
+                right = mid;
+            }
+        }
+        
+        // After max iterations, return the best approximation
+        leftCost = calculateCost(left, q, T);
+        rightCost = calculateCost(right, q, T);
+        
+        // Return the value that gives cost closest to target
+        if (cost - leftCost < rightCost - cost) {
+            return left;
+        } else {
+            return right;
+        }
+    }
 } 

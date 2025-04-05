@@ -256,6 +256,50 @@ Returns the token quantity for a specific bin in a market.
 
 - Token quantity for the specified bin
 
+### calculateBinCost
+
+```solidity
+function calculateBinCost(uint256 marketId, int256 binIndex, uint256 amount) external view returns (uint256)
+```
+
+Calculates the cost to buy tokens in a specific bin.
+
+#### Parameters
+
+- `marketId`: Market ID
+- `binIndex`: Bin index
+- `amount`: Token amount to purchase
+
+#### Return Value
+
+- Cost in collateral tokens for the specified amount
+
+### calculateXForBin
+
+```solidity
+function calculateXForBin(uint256 marketId, int256 binIndex, uint256 cost) external view returns (uint256)
+```
+
+Calculates the amount of tokens that can be bought with the given cost for a specific bin.
+
+#### Parameters
+
+- `marketId`: Market ID
+- `binIndex`: Bin index
+- `cost`: The amount of collateral to spend
+
+#### Return Value
+
+- Amount of tokens that can be purchased with the specified cost
+
+#### Special Cases
+
+- Returns 0 if:
+  - The market doesn't exist or is inactive
+  - The market is closed
+  - The bin index is outside the market's min/max tick range
+  - The bin index is not a multiple of tick spacing
+
 ### validateBinIndex
 
 ```solidity
@@ -404,6 +448,18 @@ binIndices[0] = 0; // Bet on bin 0
 amounts[0] = 10 ether; // Purchase 10 tokens
 
 manager.buyTokens(0, binIndices, amounts, 100 ether);
+```
+
+### Calculate Tokens for Given Cost
+
+```solidity
+// Get contract instance
+RangeBetManager manager = RangeBetManager(managerAddress);
+
+// Calculate how many tokens can be bought with 10 ether in bin 0
+uint256 tokenAmount = manager.calculateXForBin(0, 0, 10 ether);
+
+// Now use this tokenAmount in your application
 ```
 
 ### Closing a Market
