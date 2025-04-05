@@ -308,4 +308,50 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         
         emit CollateralWithdrawn(to, amount);
     }
+
+    /**
+     * @dev Gets the quantities of tokens in a range of bins from fromBinIndex to toBinIndex
+     * @param marketId The ID of the market
+     * @param fromBinIndex The starting bin index (inclusive)
+     * @param toBinIndex The ending bin index (inclusive)
+     * @return binIndices Array of bin indices
+     * @return quantities Array of token quantities corresponding to each bin index
+     */
+    function getBinQuantitiesInRange(
+        uint256 marketId,
+        int256 fromBinIndex,
+        int256 toBinIndex
+    )
+        external
+        view
+        returns (
+            int256[] memory binIndices,
+            uint256[] memory quantities
+        )
+    {
+        Market storage market = markets[marketId];
+
+        // Validate the range parameters
+        require(fromBinIndex <= toBinIndex, "fromBinIndex must be <= toBinIndex");
+        require(fromBinIndex >= market.minTick && toBinIndex <= market.maxTick, "Bin index out of range");
+        require(fromBinIndex % int256(market.tickSpacing) == 0, "fromBinIndex not multiple of tickSpacing");
+        require(toBinIndex % int256(market.tickSpacing) == 0, "toBinIndex not multiple of tickSpacing");
+
+        // Calculate the number of bins in the range
+        uint256 step = uint256((toBinIndex - fromBinIndex) / int256(market.tickSpacing)) + 1;
+
+        // Allocate memory for the arrays
+        binIndices = new int256[](step);
+        quantities = new uint256[](step);
+
+        // Populate the arrays with bin indices and quantities
+        int256 currentBin = fromBinIndex;
+        for (uint256 i = 0; i < step; i++) {
+            binIndices[i] = currentBin;
+            quantities[i] = market.q[currentBin];
+            currentBin += int256(market.tickSpacing);
+        }
+
+        return (binIndices, quantities);
+    }
 } 

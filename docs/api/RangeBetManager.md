@@ -269,6 +269,35 @@ function validateBinIndex(uint256 marketId, int256 binIndex) public view
 - `marketId`: 마켓 ID
 - `binIndex`: 확인할 빈 인덱스
 
+### getBinQuantitiesInRange
+
+```solidity
+function getBinQuantitiesInRange(
+    uint256 marketId,
+    int256 fromBinIndex,
+    int256 toBinIndex
+) external view returns (int256[] memory binIndices, uint256[] memory quantities)
+```
+
+특정 마켓의 여러 빈에 대한 토큰 수량을 한 번에 조회합니다.
+
+#### 매개변수
+
+- `marketId`: 마켓 ID
+- `fromBinIndex`: 시작 빈 인덱스 (포함)
+- `toBinIndex`: 종료 빈 인덱스 (포함)
+
+#### 반환값
+
+- `binIndices`: 빈 인덱스 배열
+- `quantities`: 각 빈의 토큰 수량 배열
+
+#### 조건
+
+- `fromBinIndex`는 `toBinIndex`보다 작거나 같아야 합니다.
+- `fromBinIndex`와 `toBinIndex`는 `minTick`과 `maxTick` 범위 내에 있어야 합니다.
+- `fromBinIndex`와 `toBinIndex`는 `tickSpacing`의 배수여야 합니다.
+
 ### 담보 인출
 
 ```solidity
@@ -395,4 +424,17 @@ RangeBetManager manager = RangeBetManager(managerAddress);
 
 // 보상 청구
 manager.claimReward(0, 0); // 마켓 0의 빈 0에서 보상 청구
+```
+
+### 구간 내 빈 수량 조회
+
+```solidity
+// 컨트랙트 인스턴스 가져오기
+RangeBetManager manager = RangeBetManager(managerAddress);
+
+// -120부터 120까지의 빈 정보 조회 (60 단위로 조회하므로 총 5개 빈 조회)
+(int256[] memory binIndices, uint256[] memory quantities) = manager.getBinQuantitiesInRange(0, -120, 120);
+
+// binIndices: [-120, -60, 0, 60, 120]
+// quantities: 각 빈의 토큰 수량
 ```
