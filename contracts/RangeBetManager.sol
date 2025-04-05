@@ -95,6 +95,69 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @dev Creates multiple prediction markets in a single transaction
+     * @param tickSpacings Array of tick spacings for each market
+     * @param minTicks Array of minimum tick values (inclusive) for each market
+     * @param maxTicks Array of maximum tick values (inclusive) for each market
+     * @param closeTimes Array of scheduled close times for each market
+     * @return marketIds Array of IDs of the newly created markets
+     */
+    function createBatchMarkets(
+        uint256[] calldata tickSpacings,
+        int256[] calldata minTicks,
+        int256[] calldata maxTicks,
+        uint256[] calldata closeTimes
+    ) external onlyOwner returns (uint256[] memory marketIds) {
+        // Check if input arrays have the same length
+        uint256 numMarkets = tickSpacings.length;
+        require(numMarkets > 0, "Must create at least one market");
+        require(minTicks.length == numMarkets, "Array lengths must match");
+        require(maxTicks.length == numMarkets, "Array lengths must match");
+        require(closeTimes.length == numMarkets, "Array lengths must match");
+        
+        // Initialize the result array
+        marketIds = new uint256[](numMarkets);
+        
+        // Create each market
+        for (uint256 i = 0; i < numMarkets; i++) {
+            uint256 tickSpacing = tickSpacings[i];
+            int256 minTick = minTicks[i];
+            int256 maxTick = maxTicks[i];
+            uint256 closeTime = closeTimes[i];
+            
+            // Validate parameters (same as in createMarket)
+            require(tickSpacing > 0, "Tick spacing must be positive");
+            require(minTick % int256(tickSpacing) == 0, "Min tick must be a multiple of tick spacing");
+            require(maxTick % int256(tickSpacing) == 0, "Max tick must be a multiple of tick spacing");
+            require(minTick < maxTick, "Min tick must be less than max tick");
+            
+            // Assign a new market ID
+            uint256 marketId = marketCount;
+            marketCount++;
+            
+            // Create a new market
+            Market storage market = markets[marketId];
+            market.active = true;
+            market.closed = false;
+            market.tickSpacing = tickSpacing;
+            market.minTick = minTick;
+            market.maxTick = maxTick;
+            market.T = 0;
+            market.collateralBalance = 0;
+            market.winningBin = 0;
+            market.openTimestamp = block.timestamp;  
+            market.closeTimestamp = closeTime;       
+            
+            emit MarketCreated(marketId, tickSpacing, minTick, maxTick, market.openTimestamp, market.closeTimestamp);
+            
+            // Store the marketId in the result array
+            marketIds[i] = marketId;
+        }
+        
+        return marketIds;
+    }
+
+    /**
      * @dev Buys tokens in multiple bins for a specific market
      * @param marketId The ID of the market
      * @param binIndices Array of bin indices where tokens will be bought

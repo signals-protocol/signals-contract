@@ -10,9 +10,9 @@ async function main() {
 
   if (network.name === "localhost") {
     // 로컬 배포 주소 (deploy:local 출력에서 가져온 값)
-    rangeBetManagerAddress = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
-    rangeBetTokenAddress = "0x75537828f2ce51be7289709686A69CbFDbB714F1";
-    collateralTokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+    rangeBetManagerAddress = "0x0B306BF915C4d645ff596e518fAf3F9669b97016";
+    rangeBetTokenAddress = "0x524F04724632eED237cbA3c37272e018b3A7967e";
+    collateralTokenAddress = "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82";
   } else {
     // Rootstock 테스트넷이나 다른 네트워크의 경우 명령줄 인자 사용
     const args = process.argv.slice(2);

@@ -94,6 +94,44 @@ Creates a new prediction market.
 
 - `MarketCreated`: Emitted when a market is created. The event includes `openTimestamp` and `closeTimestamp`.
 
+### createBatchMarkets
+
+```solidity
+function createBatchMarkets(
+    uint256[] calldata tickSpacings,
+    int256[] calldata minTicks,
+    int256[] calldata maxTicks,
+    uint256[] calldata closeTimes
+) external onlyOwner returns (uint256[] memory marketIds)
+```
+
+Creates multiple prediction markets in a single transaction.
+
+#### Parameters
+
+- `tickSpacings`: Array of tick spacings for each market
+- `minTicks`: Array of minimum tick values for each market
+- `maxTicks`: Array of maximum tick values for each market
+- `closeTimes`: Array of scheduled close times for each market
+
+#### Return Value
+
+- `marketIds`: Array of IDs of the created markets
+
+#### Conditions
+
+- The function caller must be the contract owner.
+- All input arrays must have the same length.
+- At least one market must be created (array length > 0).
+- For each market, the same validation rules as in `createMarket` apply:
+  - `minTick` must be less than `maxTick`
+  - `tickSpacing` must be positive
+  - `minTick` and `maxTick` must be divisible by `tickSpacing`
+
+#### Events
+
+- `MarketCreated`: Emitted for each created market. The event includes `openTimestamp` and `closeTimestamp`.
+
 ### buyTokens
 
 ```solidity

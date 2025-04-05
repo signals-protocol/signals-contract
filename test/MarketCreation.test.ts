@@ -112,6 +112,20 @@ describe("Market Creation", function () {
     for (let i = 0; i < 3; i++) {
       const marketInfo = await env.rangeBetManager.getMarketInfo(i);
 
+      // Debug output
+      console.log(`Market ID ${i}: `, {
+        active: marketInfo[0],
+        closed: marketInfo[1],
+        tickSpacing: marketInfo[2],
+        minTick: marketInfo[3],
+        maxTick: marketInfo[4],
+        T: marketInfo[5],
+        collateralBalance: marketInfo[6],
+        winningBin: marketInfo[7],
+        openTimestamp: marketInfo[8],
+        closeTimestamp: marketInfo[9],
+      });
+
       // Markets should be active and not closed
       expect(marketInfo[0]).to.be.true; // active
       expect(marketInfo[1]).to.be.false; // closed
@@ -157,5 +171,140 @@ describe("Market Creation", function () {
     expect(emittedCloseTimestamp).to.equal(closeTime);
     expect(marketInfo[8]).to.equal(emittedOpenTimestamp); // openTimestamp
     expect(marketInfo[9]).to.equal(emittedCloseTimestamp); // closeTimestamp
+  });
+
+  it("Should create multiple markets in batch with correct parameters", async function () {
+    // Expected market close times: current time + different days
+    const now = Math.floor(Date.now() / 1000);
+    const closeTimes = [
+      BigInt(now + 7 * 24 * 60 * 60), // +7 days
+      BigInt(now + 14 * 24 * 60 * 60), // +14 days
+      BigInt(now + 21 * 24 * 60 * 60), // +21 days
+    ];
+
+    // Parameters for each market
+    const tickSpacings = [60, 120, 180];
+    const minTicks = [-360, -720, -1080];
+    const maxTicks = [360, 720, 1080];
+
+    // Create a batch of markets
+    const tx = await env.rangeBetManager.createBatchMarkets(
+      tickSpacings,
+      minTicks,
+      maxTicks,
+      closeTimes
+    );
+    const receipt = await tx.wait();
+
+    // Check the events
+    const marketCreatedEvents = receipt?.logs.filter(
+      (log: any) => log.fragment?.name === "MarketCreated"
+    );
+
+    // Should have 3 MarketCreated events
+    expect(marketCreatedEvents.length).to.equal(3);
+
+    // Get the actual market IDs from the events
+    const marketIds = marketCreatedEvents.map((event: any) => event.args[0]);
+    console.log("Market IDs from events:", marketIds);
+
+    // Verify each market was created correctly
+    for (let i = 0; i < 3; i++) {
+      const marketInfo = await env.rangeBetManager.getMarketInfo(marketIds[i]);
+
+      // Debug output
+      console.log(`Market ID ${marketIds[i]}: `, {
+        active: marketInfo[0],
+        closed: marketInfo[1],
+        tickSpacing: marketInfo[2],
+        minTick: marketInfo[3],
+        maxTick: marketInfo[4],
+        T: marketInfo[5],
+        collateralBalance: marketInfo[6],
+        winningBin: marketInfo[7],
+        openTimestamp: marketInfo[8],
+        closeTimestamp: marketInfo[9],
+      });
+
+      // Check parameters
+      expect(marketInfo[0]).to.be.true; // active
+      expect(marketInfo[1]).to.be.false; // closed
+      expect(marketInfo[2]).to.equal(tickSpacings[i]); // tickSpacing
+      expect(marketInfo[3]).to.equal(minTicks[i]); // minTick
+      expect(marketInfo[4]).to.equal(maxTicks[i]); // maxTick
+      expect(marketInfo[5]).to.equal(0); // T (total supply)
+      expect(marketInfo[6]).to.equal(0); // collateralBalance
+      expect(marketInfo[8]).to.not.equal(0); // openTimestamp should not be 0
+      expect(marketInfo[9]).to.equal(closeTimes[i]); // closeTimestamp
+    }
+  });
+
+  it("Should fail batch creation with invalid parameters", async function () {
+    const now = Math.floor(Date.now() / 1000);
+    const oneWeekLater = BigInt(now + 7 * 24 * 60 * 60);
+
+    // Different array lengths
+    await expect(
+      env.rangeBetManager.createBatchMarkets(
+        [60, 120],
+        [-360, -720, -1080],
+        [360, 720, 1080],
+        [oneWeekLater, oneWeekLater, oneWeekLater]
+      )
+    ).to.be.revertedWith("Array lengths must match");
+
+    // Invalid tick spacing (should check first element in the array)
+    await expect(
+      env.rangeBetManager.createBatchMarkets(
+        [0, 120, 180],
+        [-360, -720, -1080],
+        [360, 720, 1080],
+        [oneWeekLater, oneWeekLater, oneWeekLater]
+      )
+    ).to.be.revertedWith("Tick spacing must be positive");
+
+    // Min tick not a multiple of tick spacing
+    await expect(
+      env.rangeBetManager.createBatchMarkets(
+        [60, 120, 180],
+        [-361, -720, -1080],
+        [360, 720, 1080],
+        [oneWeekLater, oneWeekLater, oneWeekLater]
+      )
+    ).to.be.revertedWith("Min tick must be a multiple of tick spacing");
+
+    // Max tick not a multiple of tick spacing
+    await expect(
+      env.rangeBetManager.createBatchMarkets(
+        [60, 120, 180],
+        [-360, -720, -1080],
+        [361, 720, 1080],
+        [oneWeekLater, oneWeekLater, oneWeekLater]
+      )
+    ).to.be.revertedWith("Max tick must be a multiple of tick spacing");
+
+    // Min tick >= max tick
+    await expect(
+      env.rangeBetManager.createBatchMarkets(
+        [60, 120, 180],
+        [-360, -720, 1080],
+        [360, 720, 1080],
+        [oneWeekLater, oneWeekLater, oneWeekLater]
+      )
+    ).to.be.revertedWith("Min tick must be less than max tick");
+  });
+
+  it("Should only allow owner to create batch markets", async function () {
+    const now = Math.floor(Date.now() / 1000);
+    const oneWeekLater = BigInt(now + 7 * 24 * 60 * 60);
+
+    await expect(
+      env.rangeBetManager
+        .connect(env.user1)
+        .createBatchMarkets([60], [-360], [360], [oneWeekLater])
+    ).to.be.revertedWithCustomError(
+      env.rangeBetManager,
+      "OwnableUnauthorizedAccount"
+    );
   });
 });

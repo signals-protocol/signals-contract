@@ -12,20 +12,37 @@ async function main() {
     "MCOL",
     ethers.parseEther("100000000000000")
   );
-  await collateralToken.waitForDeployment();
+
+  // Wait for deployment and get transaction receipt
+  const deployTx = collateralToken.deploymentTransaction();
+  if (!deployTx) throw new Error("Deploy transaction is null");
+  const collateralTokenReceipt = await deployTx.wait();
   const collateralTokenAddress = await collateralToken.getAddress();
+
   console.log("MockCollateralToken deployed to:", collateralTokenAddress);
+  console.log("Transaction Hash:", collateralTokenReceipt?.hash || "unknown");
+  console.log(
+    "Block Number:",
+    collateralTokenReceipt?.blockNumber || "unknown"
+  );
 
   // Deploy RangeBetMath library
-  console.log("Deploying RangeBetMath library...");
+  console.log("\nDeploying RangeBetMath library...");
   const RangeBetMathFactory = await ethers.getContractFactory("RangeBetMath");
   const rangeBetMath = await RangeBetMathFactory.deploy();
-  await rangeBetMath.waitForDeployment();
+
+  // Wait for deployment and get transaction receipt
+  const mathDeployTx = rangeBetMath.deploymentTransaction();
+  if (!mathDeployTx) throw new Error("Deploy transaction is null");
+  const rangeBetMathReceipt = await mathDeployTx.wait();
   const rangeBetMathAddress = await rangeBetMath.getAddress();
+
   console.log("RangeBetMath deployed to:", rangeBetMathAddress);
+  console.log("Transaction Hash:", rangeBetMathReceipt?.hash || "unknown");
+  console.log("Block Number:", rangeBetMathReceipt?.blockNumber || "unknown");
 
   // Deploy RangeBetManager with library linking
-  console.log("Deploying RangeBetManager...");
+  console.log("\nDeploying RangeBetManager...");
   const RangeBetManagerFactory = await ethers.getContractFactory(
     "RangeBetManager",
     {
@@ -40,42 +57,47 @@ async function main() {
     collateralTokenAddress,
     baseURI
   );
-  await rangeBetManager.waitForDeployment();
+
+  // Wait for deployment and get transaction receipt
+  const managerDeployTx = rangeBetManager.deploymentTransaction();
+  if (!managerDeployTx) throw new Error("Deploy transaction is null");
+  const rangeBetManagerReceipt = await managerDeployTx.wait();
   const rangeBetManagerAddress = await rangeBetManager.getAddress();
+
   console.log("RangeBetManager deployed to:", rangeBetManagerAddress);
+  console.log("Transaction Hash:", rangeBetManagerReceipt?.hash || "unknown");
+  console.log(
+    "Block Number:",
+    rangeBetManagerReceipt?.blockNumber || "unknown"
+  );
+
+  // Store block numbers for summary
+  const collateralTokenBlockNumber =
+    collateralTokenReceipt?.blockNumber || "unknown";
+  const rangeBetMathBlockNumber = rangeBetMathReceipt?.blockNumber || "unknown";
+  const rangeBetManagerBlockNumber =
+    rangeBetManagerReceipt?.blockNumber || "unknown";
 
   try {
     // Try to get the RangeBetToken address
     // This might fail if the contract interface doesn't match TypeScript expectations
     const rangeBetTokenAddress = await rangeBetManager.rangeBetToken();
-    console.log("RangeBetToken deployed to:", rangeBetTokenAddress);
-
-    // Create a sample market
-    console.log("Creating a sample market...");
-    const tickSpacing = 60;
-    const minTick = -360;
-    const maxTick = 120000;
-    // Market close time: current time + 7 days
-    const closeTime = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
-
-    const createMarketTx = await rangeBetManager.createMarket(
-      tickSpacing,
-      minTick,
-      maxTick,
-      closeTime
-    );
-    await createMarketTx.wait();
-    console.log("Sample market created with parameters:");
-    console.log("- tickSpacing:", tickSpacing);
-    console.log("- minTick:", minTick);
-    console.log("- maxTick:", maxTick);
+    console.log("\nRangeBetToken deployed to:", rangeBetTokenAddress);
     console.log(
-      "- closeTime:",
-      closeTime,
-      "(",
-      new Date(closeTime * 1000).toLocaleString(),
-      ")"
+      "Note: RangeBetToken is created during RangeBetManager deployment"
     );
+    console.log(
+      "Block Number:",
+      rangeBetManagerBlockNumber,
+      "(same as RangeBetManager)"
+    );
+
+    // Note: Sample market creation has been removed
+    // Markets will be created separately using the createBatchMarkets function
+    console.log(
+      "\nDeployment completed successfully without creating any markets."
+    );
+    console.log("To create markets, use the createMultipleMarkets script.");
   } catch (error) {
     console.error("Error with contract interaction:", error);
     console.log(
@@ -84,12 +106,33 @@ async function main() {
   }
 
   // Output deployment information
-  console.log("--------------------");
-  console.log("Deployment Information:");
+  console.log("\n--------------------");
+  console.log("Deployment Information Summary:");
   console.log("Network:", network.name);
-  console.log("Collateral Token:", collateralTokenAddress);
-  console.log("RangeBetMath Library:", rangeBetMathAddress);
-  console.log("RangeBetManager:", rangeBetManagerAddress);
+  console.log(
+    "Collateral Token:",
+    collateralTokenAddress,
+    `(Block #${collateralTokenBlockNumber})`
+  );
+  console.log(
+    "RangeBetMath Library:",
+    rangeBetMathAddress,
+    `(Block #${rangeBetMathBlockNumber})`
+  );
+  console.log(
+    "RangeBetManager:",
+    rangeBetManagerAddress,
+    `(Block #${rangeBetManagerBlockNumber})`
+  );
+  try {
+    console.log(
+      "RangeBetToken:",
+      await rangeBetManager.rangeBetToken(),
+      `(Block #${rangeBetManagerBlockNumber})`
+    );
+  } catch (error) {
+    console.log("RangeBetToken: Unable to retrieve address");
+  }
   console.log("--------------------");
 }
 

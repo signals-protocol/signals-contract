@@ -1,6 +1,13 @@
 import { ethers, network } from "hardhat";
 import * as dotenv from "dotenv";
 
+// 마켓 정보를 담을 인터페이스 정의
+interface MarketInfo {
+  marketId: number;
+  closeTime: number;
+  status: string;
+}
+
 // Load .env file
 dotenv.config();
 
@@ -13,7 +20,7 @@ async function main() {
 
   if (network.name === "localhost") {
     // Local deployment address (value from deployment script output)
-    rangeBetManagerAddress = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+    rangeBetManagerAddress = "0x0B306BF915C4d645ff596e518fAf3F9669b97016";
   } else if (network.name === "rskTestnet") {
     // For RSK Testnet, use environment variables
     rangeBetManagerAddress = process.env.RSK_RANGE_BET_MANAGER || "";
@@ -51,90 +58,119 @@ async function main() {
   const daysBack = 15;
   const daysFuture = 15;
 
-  // Array to store results
-  const createdMarkets = [];
+  // Arrays to prepare batch parameters
+  const tickSpacings: number[] = [];
+  const minTicks: number[] = [];
+  const maxTicks: number[] = [];
+  const closeTimes: number[] = [];
 
-  console.log("\n--- Creating markets ---");
+  console.log("\n--- Preparing market parameters ---");
 
-  // Create past markets (already closed markets)
+  // Prepare parameters for past markets
   for (let i = daysBack; i > 0; i--) {
     const closeTime = now - i * oneDay;
-    console.log(`Creating market ${daysBack - i + 1}/30 (${i} days ago):`);
     console.log(
-      `- closeTime: ${closeTime} (${new Date(
+      `Preparing market for ${i} days ago: ${new Date(
         closeTime * 1000
-      ).toLocaleString()})`
+      ).toLocaleString()}`
     );
 
-    try {
-      const tx = await rangeBetManager.createMarket(
-        tickSpacing,
-        minTick,
-        maxTick,
-        closeTime
-      );
-      await tx.wait();
-
-      // Created market ID is total number of markets - 1
-      const marketId = Number(await rangeBetManager.marketCount()) - 1;
-      createdMarkets.push({
-        marketId,
-        closeTime,
-        status: "created (past)",
-      });
-
-      console.log(`- Market created with ID: ${marketId}`);
-    } catch (error: any) {
-      console.error(`- Failed to create market: ${error?.message || error}`);
-    }
+    tickSpacings.push(tickSpacing);
+    minTicks.push(minTick);
+    maxTicks.push(maxTick);
+    closeTimes.push(closeTime);
   }
 
-  // Create future markets
+  // Prepare parameters for current day market
+  console.log(
+    `Preparing market for today: ${new Date(now * 1000).toLocaleString()}`
+  );
+  tickSpacings.push(tickSpacing);
+  minTicks.push(minTick);
+  maxTicks.push(maxTick);
+  closeTimes.push(now);
+
+  // Prepare parameters for future markets
   for (let i = 1; i <= daysFuture; i++) {
-    const closeTime = now + (7 + i) * oneDay; // Closes after a week + i days
+    const closeTime = now + i * oneDay;
     console.log(
-      `\nCreating market ${daysBack + 1 + i}/30 (${i} days in future):`
-    );
-    console.log(
-      `- closeTime: ${closeTime} (${new Date(
+      `Preparing market for ${i} days in future: ${new Date(
         closeTime * 1000
-      ).toLocaleString()})`
+      ).toLocaleString()}`
     );
 
-    try {
-      const tx = await rangeBetManager.createMarket(
-        tickSpacing,
-        minTick,
-        maxTick,
-        closeTime
-      );
-      await tx.wait();
-
-      const marketId = Number(await rangeBetManager.marketCount()) - 1;
-      createdMarkets.push({
-        marketId,
-        closeTime,
-        status: "created (future)",
-      });
-
-      console.log(`- Market created with ID: ${marketId}`);
-    } catch (error: any) {
-      console.error(`- Failed to create market: ${error?.message || error}`);
-    }
+    tickSpacings.push(tickSpacing);
+    minTicks.push(minTick);
+    maxTicks.push(maxTick);
+    closeTimes.push(closeTime);
   }
 
-  // Print summary of results
-  console.log("\n--- Summary of created markets ---");
-  console.log(`Total markets created: ${createdMarkets.length}`);
-  createdMarkets.forEach((market, index) => {
-    console.log(
-      `${index + 1}. Market ID: ${market.marketId}, Close time: ${new Date(
-        market.closeTime * 1000
-      ).toLocaleString()}, Status: ${market.status}`
-    );
-  });
+  console.log("\n--- Creating markets in batch ---");
+  console.log(`Total markets to create: ${tickSpacings.length}`);
 
-  console.log("\n--- Process completed successfully ---");
+  try {
+    // Use batch creation function instead of creating markets one by one
+    console.log("Sending batch transaction to create all markets...");
+    const tx = await rangeBetManager.getFunction("createBatchMarkets")(
+      tickSpacings,
+      minTicks,
+      maxTicks,
+      closeTimes
+    );
+    const receipt = await tx.wait();
+    if (!receipt) {
+      console.error(
+        "Transaction receipt is null. Transaction may have failed."
+      );
+      return;
+    }
+
+    // Log transaction details
+    console.log(`Batch Transaction Hash: ${receipt.hash}`);
+    console.log(`Block Number: ${receipt.blockNumber}`);
+
+    // Get the MarketCreated events
+    const marketCreatedEvents = receipt.logs.filter(
+      (log: any) => log.fragment && log.fragment.name === "MarketCreated"
+    );
+
+    const createdMarkets = marketCreatedEvents.map((event: any) => {
+      const marketId = Number(event.args[0]);
+      const closeTime = Number(event.args[5]);
+
+      let status;
+      if (closeTime < now) {
+        status = "created (past)";
+      } else if (closeTime === now) {
+        status = "created (today)";
+      } else {
+        status = "created (future)";
+      }
+
+      return {
+        marketId,
+        closeTime,
+        status,
+      };
+    });
+
+    // Print summary of results
+    console.log("\n--- Summary of created markets ---");
+    console.log(`Total markets created: ${createdMarkets.length}`);
+    createdMarkets.forEach((market: MarketInfo, index: number) => {
+      console.log(
+        `${index + 1}. Market ID: ${market.marketId}, Close time: ${new Date(
+          market.closeTime * 1000
+        ).toLocaleString()}, Status: ${market.status}`
+      );
+    });
+
+    console.log("\n--- Process completed successfully ---");
+  } catch (error: any) {
+    console.error(
+      `Failed to create markets in batch: ${error?.message || error}`
+    );
+  }
 }
 
 // Execute script and handle errors

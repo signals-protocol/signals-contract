@@ -15,9 +15,9 @@ async function main() {
 
   if (network.name === "localhost") {
     // Local deployment addresses (values from deploy:local output)
-    rangeBetManagerAddress = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
-    rangeBetTokenAddress = "0x75537828f2ce51be7289709686A69CbFDbB714F1";
-    collateralTokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+    rangeBetManagerAddress = "0x0B306BF915C4d645ff596e518fAf3F9669b97016";
+    rangeBetTokenAddress = "0x524F04724632eED237cbA3c37272e018b3A7967e";
+    collateralTokenAddress = "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82";
   } else if (network.name === "rskTestnet") {
     // For RSK Testnet, use environment variables
     rangeBetManagerAddress = process.env.RSK_RANGE_BET_MANAGER || "";
@@ -150,7 +150,17 @@ async function main() {
         maxCollateral
       );
 
-      await tx.wait();
+      const receipt = await tx.wait();
+      if (!receipt) {
+        console.error(
+          "Transaction receipt is null. Transaction may have failed."
+        );
+        continue;
+      }
+
+      // Log transaction details
+      console.log(`Transaction Hash: ${receipt.hash}`);
+      console.log(`Block Number: ${receipt.blockNumber}`);
 
       // Confirm bet
       const tokenId = await rangeBetToken.encodeTokenId(marketId, selectedBin);
