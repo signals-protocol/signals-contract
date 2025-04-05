@@ -42,7 +42,7 @@ describe("Reward Claims", function () {
 
   it("Should allow users to claim rewards from winning bin", async function () {
     // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(env.marketId, 0);
+    await env.rangeBetManager.closeMarket(0);
 
     // Get collateral balance before claiming
     const user1BalanceBefore = await env.collateralToken.balanceOf(
@@ -81,7 +81,7 @@ describe("Reward Claims", function () {
 
   it("Should not allow claiming from non-winning bins", async function () {
     // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(env.marketId, 0);
+    await env.rangeBetManager.closeMarket(0);
 
     // Try to claim from bin 60 (not winning)
     await expect(
@@ -96,7 +96,7 @@ describe("Reward Claims", function () {
 
   it("Should not allow claiming twice", async function () {
     // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(env.marketId, 0);
+    await env.rangeBetManager.closeMarket(0);
 
     // User1 claims rewards first time
     await env.rangeBetManager.connect(env.user1).claimReward(env.marketId, 0);
@@ -109,7 +109,7 @@ describe("Reward Claims", function () {
 
   it("Should burn tokens after claiming", async function () {
     // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(env.marketId, 0);
+    await env.rangeBetManager.closeMarket(0);
 
     // Check token balance before claiming
     const tokenId = await env.rangeBetToken.encodeTokenId(env.marketId, 0);
@@ -145,7 +145,7 @@ describe("Reward Claims", function () {
   // 추가 테스트: 보유 토큰이 전혀 없는 유저가 claimReward 시도
   it("Should not allow users with no tokens to claim rewards", async function () {
     // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(env.marketId, 0);
+    await env.rangeBetManager.closeMarket(0);
 
     // User4 has no tokens but tries to claim
     await expect(

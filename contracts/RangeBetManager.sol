@@ -36,6 +36,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     IERC20 public collateralToken;
     uint256 public marketCount;
     mapping(uint256 => Market) public markets;
+    uint256 public lastClosedMarketId;  // 가장 최근에 닫힌 마켓의 ID
 
     // Events
     event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick, uint256 openTimestamp, uint256 closeTimestamp);
@@ -53,6 +54,8 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         collateralToken = IERC20(_collateralToken);
         // Deploy the token contract
         rangeBetToken = new RangeBetToken(tokenURI, address(this));
+        // Initialize lastClosedMarketId to max uint256 to indicate no markets have been closed yet
+        lastClosedMarketId = type(uint256).max;
     }
 
     /**
@@ -226,11 +229,24 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Closes a market and sets the winning bin
-     * @param marketId The ID of the market to close
+     * @dev Closes the next market in sequence and sets the winning bin
      * @param winningBin The bin that won (where the actual value landed)
      */
-    function closeMarket(uint256 marketId, int256 winningBin) external onlyOwner {
+    function closeMarket(int256 winningBin) external onlyOwner {
+        // 다음으로 닫을 마켓 ID 계산
+        uint256 marketId;
+        
+        if (lastClosedMarketId == type(uint256).max) {
+            // 첫 번째 마켓 닫기
+            marketId = 0;
+        } else {
+            // 다음 마켓 닫기
+            marketId = lastClosedMarketId + 1;
+        }
+        
+        // 해당 마켓이 존재하는지 확인
+        require(marketId < marketCount, "No more markets to close");
+        
         Market storage market = markets[marketId];
         require(market.active, "Market is not active");
         require(!market.closed, "Market is already closed");
@@ -239,6 +255,9 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         
         market.closed = true;
         market.winningBin = winningBin;
+        
+        // 마지막으로 닫힌 마켓 ID 업데이트
+        lastClosedMarketId = marketId;
         
         emit MarketClosed(marketId, winningBin);
     }
@@ -331,6 +350,14 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
             market.openTimestamp,
             market.closeTimestamp
         );
+    }
+
+    /**
+     * @dev Gets the last closed market ID
+     * @return The ID of the last closed market or type(uint256).max if no market has been closed
+     */
+    function getLastClosedMarketId() external view returns (uint256) {
+        return lastClosedMarketId;
     }
 
     /**

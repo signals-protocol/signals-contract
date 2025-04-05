@@ -91,7 +91,7 @@ describe("Market Management", function () {
       );
 
     // Close the market
-    await env.rangeBetManager.closeMarket(env.marketId, 0);
+    await env.rangeBetManager.closeMarket(0);
 
     // Try to deactivate closed market
     await expect(

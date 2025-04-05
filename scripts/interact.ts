@@ -155,7 +155,7 @@ async function main() {
 
   // Close market with bin 0 as the winner
   console.log("\n--- Closing Market ---");
-  await rangeBetManager.closeMarket(0, 0);
+  await rangeBetManager.closeMarket(0);
   console.log("Market closed with bin 0 as the winner");
 
   // User1 claims rewards

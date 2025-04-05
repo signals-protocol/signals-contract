@@ -11,12 +11,14 @@ RangeBetToken public rangeBetToken;
 IERC20 public collateralToken;
 uint256 public marketCount;
 mapping(uint256 => Market) public markets;
+uint256 public lastClosedMarketId;
 ```
 
 - `rangeBetToken`: ERC1155 token contract instance
 - `collateralToken`: ERC20 token contract instance used as collateral
 - `marketCount`: Total number of markets created
 - `markets`: Mapping from market ID to market data
+- `lastClosedMarketId`: ID of the last closed market (initialized to max uint256 if no markets closed yet)
 
 ### Market Struct
 
@@ -169,23 +171,30 @@ Purchases betting tokens for multiple bins in a specific market.
 ### closeMarket
 
 ```solidity
-function closeMarket(uint256 marketId, int256 winningBin) external onlyOwner
+function closeMarket(int256 winningBin) external onlyOwner
 ```
 
-Closes a prediction market and sets the winning bin.
+Closes the next market in sequence (based on the lastClosedMarketId + 1) and sets the winning bin.
 
 #### Parameters
 
-- `marketId`: Market ID to close
 - `winningBin`: Winning bin index
 
 #### Conditions
 
 - The function caller must be the contract owner.
+- There must be more markets to close (lastClosedMarketId + 1 < marketCount).
 - The market must exist and be active.
 - The market must not be already closed.
 - The winning bin must be within the min/max tick range of the market.
 - The winning bin must be a multiple of `tickSpacing`.
+- The market to close is determined automatically as `lastClosedMarketId + 1` (or 0 if no markets have been closed yet).
+
+#### Effects
+
+- Sets the market's `closed` flag to `true`.
+- Sets the market's `winningBin` to the provided value.
+- Updates `lastClosedMarketId` to track the most recently closed market.
 
 #### Events
 
@@ -238,6 +247,18 @@ Withdraws all collateral tokens from the contract.
 #### Events
 
 - `CollateralWithdrawn`: Emitted when collateral is withdrawn.
+
+### getLastClosedMarketId
+
+```solidity
+function getLastClosedMarketId() external view returns (uint256)
+```
+
+Returns the ID of the last closed market.
+
+#### Return Value
+
+- The ID of the last closed market, or `type(uint256).max` if no markets have been closed yet.
 
 ## View Functions
 
@@ -507,7 +528,7 @@ uint256 tokenAmount = manager.calculateXForBin(0, 0, 10 ether);
 RangeBetManager manager = RangeBetManager(managerAddress);
 
 // Close market (owner only)
-manager.closeMarket(0, 0); // Close market 0, bin 0 wins
+manager.closeMarket(0); // Close next market in sequence, bin 0 wins
 ```
 
 ### Claiming Rewards
