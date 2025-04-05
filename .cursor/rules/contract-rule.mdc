@@ -9,3 +9,4 @@ alwaysApply: true
 - use yarn, instead of npm
 - use english as a output(not a chat, only file, code)
 - ehters v6. not a v5.
+- hardhat don't receive script argument. use env or inline variable.

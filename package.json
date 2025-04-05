@@ -42,6 +42,8 @@
     "interact:rsk": "hardhat run scripts/interact.ts --network rskTestnet",
     "create-markets:local": "hardhat run scripts/createMultipleMarkets.ts --network localhost",
     "create-markets:rsk": "hardhat run scripts/createMultipleMarkets.ts --network rskTestnet",
+    "bet:local": "hardhat run scripts/betMultipleMarkets.ts --network localhost",
+    "bet:rsk": "hardhat run scripts/betMultipleMarkets.ts --network rskTestnet",
     "clean": "hardhat clean",
     "format": "prettier --write \"contracts/**/*.sol\" \"test/**/*.ts\" \"scripts/**/*.ts\"",
     "lint": "solhint \"contracts/**/*.sol\""
