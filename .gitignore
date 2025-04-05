@@ -174,7 +174,7 @@ ignition/deployments/chain-31337
 # VsCode
 .vscode
 
-# 쉘 스크립트 파일 제거
+# Remove shell script files
 *.sh
 
 # Development scripts

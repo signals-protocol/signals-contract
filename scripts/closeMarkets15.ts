@@ -1,19 +1,20 @@
 import { ethers, network } from "hardhat";
 import * as dotenv from "dotenv";
-import { WINNING_BINS, getDefaultWinningBin } from "./winningBins";
+import { WINNING_BINS } from "./winningBins";
+import { getDefaultWinningBin } from "./winningBins";
 
-// 환경변수 로드
+// Load environment variables
 dotenv.config();
 
 async function main() {
   console.log("Closing markets 0 to 14...");
   console.log("Network:", network.name);
 
-  // 네트워크에 따라 RangeBetManager 주소 자동 설정
+  // Automatically set RangeBetManager address based on network
   let rangeBetManagerAddress = "";
 
   if (network.name === "localhost") {
-    rangeBetManagerAddress = "0x0B306BF915C4d645ff596e518fAf3F9669b97016"; // 로컬 테스트용 주소
+    rangeBetManagerAddress = "0x0B306BF915C4d645ff596e518fAf3F9669b97016"; // Local test address
   } else if (network.name === "rskTestnet") {
     rangeBetManagerAddress = process.env.RSK_RANGE_BET_MANAGER || "";
   } else if (network.name === "polygonAmoy") {
@@ -22,16 +23,16 @@ async function main() {
     rangeBetManagerAddress = process.env.CITREA_RANGE_BET_MANAGER || "";
   }
 
-  // 마켓 ID 범위 고정
+  // Fixed market ID range
   const startMarketId = 0;
   const endMarketId = 14;
 
-  // 주소 검증
+  // Validate address
   if (!rangeBetManagerAddress) {
     console.error(
-      `Error: ${network.name} 네트워크의 RangeBetManager 주소가 설정되지 않았습니다.`
+      `Error: RangeBetManager address for ${network.name} network is not set.`
     );
-    console.error("환경변수를 설정하거나 .env 파일을 업데이트하세요.");
+    console.error("Set environment variables or update your .env file.");
     process.exit(1);
   }
 
@@ -48,11 +49,11 @@ async function main() {
     rangeBetManagerAddress
   );
 
-  // 마켓 개수 확인
+  // Check total market count
   const marketCount = await rangeBetManager.marketCount();
   console.log(`Total markets: ${marketCount}`);
 
-  // 마지막으로 닫힌 마켓 ID 확인 시도
+  // Try to check the last closed market ID
   try {
     const lastClosedMarketId = await rangeBetManager.getLastClosedMarketId();
     const isAnyMarketClosed = lastClosedMarketId !== BigInt(2 ** 256 - 1);
@@ -65,7 +66,7 @@ async function main() {
     console.log("Could not determine last closed market ID, continuing anyway");
   }
 
-  // 종료 마켓 ID가 마켓 총 개수를 초과하는지 확인
+  // Check if the end market ID exceeds the total count
   if (endMarketId >= marketCount) {
     console.log(
       `Warning: Specified endMarketId ${endMarketId} exceeds total market count ${marketCount}`
@@ -75,14 +76,14 @@ async function main() {
 
   const actualEndMarketId = Math.min(endMarketId, Number(marketCount) - 1);
 
-  // 지정된 범위의 마켓 닫기
+  // Close markets in the specified range
   for (
     let marketId = startMarketId;
     marketId <= actualEndMarketId;
     marketId++
   ) {
     try {
-      // 마켓 정보 확인
+      // Check market information
       console.log(`\nChecking market ${marketId}...`);
       const marketInfo = await rangeBetManager.getMarketInfo(marketId);
       const isActive = marketInfo[0];
@@ -102,14 +103,14 @@ async function main() {
       const maxTick = Number(marketInfo[4]);
       const tickSpacing = Number(marketInfo[2]);
 
-      // winningBin 값 결정
+      // Determine winning bin value
       let winningBin: number;
 
-      // 미리 정의된 winningBin 값이 있는지 확인
+      // Check if there's a predefined winning bin value
       if (marketId in WINNING_BINS) {
         winningBin = WINNING_BINS[marketId];
       } else {
-        // 정의된 값이 없으면 기본값 계산
+        // Calculate default value if no predefined value exists
         winningBin = getDefaultWinningBin(minTick, maxTick, tickSpacing);
       }
 
@@ -117,13 +118,19 @@ async function main() {
         `Closing market ${marketId} with winning bin ${winningBin}...`
       );
 
-      // 마켓 닫기 트랜잭션 제출 (marketId 인자로 전달 안함)
+      // Submit transaction to close market (don't pass marketId as an argument)
       const tx = await rangeBetManager.closeMarket(winningBin);
       const receipt = await tx.wait();
 
-      console.log(`Market ${marketId} closed successfully!`);
-      console.log(`Transaction Hash: ${receipt.hash}`);
-      console.log(`Block Number: ${receipt.blockNumber}`);
+      if (receipt) {
+        console.log(`Market ${marketId} closed successfully!`);
+        console.log(`Transaction Hash: ${receipt.hash}`);
+        console.log(`Block Number: ${receipt.blockNumber}`);
+      } else {
+        console.log(
+          `Market ${marketId} closure transaction sent, but receipt not available`
+        );
+      }
     } catch (error: any) {
       console.error(`Error closing market ${marketId}:`, error.message);
     }

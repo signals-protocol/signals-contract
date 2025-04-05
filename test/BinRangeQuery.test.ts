@@ -26,15 +26,15 @@ describe("Bin Range Query", function () {
       const [binIndices, quantities] =
         await env.rangeBetManager.getBinQuantitiesInRange(
           env.marketId,
-          -180, // minTick보다는 크고
-          180 // 일부 토큰이 있는 빈과 없는 빈을 모두 포함하는 범위
+          -180, // Greater than minTick
+          180 // Range includes both bins with tokens and without tokens
         );
 
-      // 7개의 빈이어야 함 (-180, -120, -60, 0, 60, 120, 180)
+      // Should have 7 bins (-180, -120, -60, 0, 60, 120, 180)
       expect(binIndices.length).to.equal(7);
       expect(quantities.length).to.equal(7);
 
-      // 실제 인덱스 확인
+      // Verify actual indices
       expect(binIndices[0]).to.equal(-180);
       expect(binIndices[1]).to.equal(-120);
       expect(binIndices[2]).to.equal(-60);
@@ -43,18 +43,18 @@ describe("Bin Range Query", function () {
       expect(binIndices[5]).to.equal(120);
       expect(binIndices[6]).to.equal(180);
 
-      // 수량 확인
-      expect(quantities[0]).to.equal(0); // -180에는 베팅 안 했으므로 0
+      // Verify quantities
+      expect(quantities[0]).to.equal(0); // No bets at -180, so 0
       expect(quantities[1]).to.equal(ethers.parseEther("100")); // -120
       expect(quantities[2]).to.equal(ethers.parseEther("100")); // -60
       expect(quantities[3]).to.equal(ethers.parseEther("100")); // 0
       expect(quantities[4]).to.equal(ethers.parseEther("100")); // 60
       expect(quantities[5]).to.equal(ethers.parseEther("100")); // 120
-      expect(quantities[6]).to.equal(0); // 180에는 베팅 안 했으므로 0
+      expect(quantities[6]).to.equal(0); // No bets at 180, so 0
     });
 
     it("Should return empty arrays for a valid range with no bins", async function () {
-      // 틱스페이싱이 60인 마켓에서, 아직 아무도 베팅하지 않은 상태에서 쿼리 실행
+      // Query in a market with tick spacing 60, with no bets placed yet
       const [binIndices, quantities] =
         await env.rangeBetManager.getBinQuantitiesInRange(
           env.marketId,
@@ -62,18 +62,18 @@ describe("Bin Range Query", function () {
           60
         );
 
-      // 인덱스는 [-60, 0, 60]이어야 함
+      // Indices should be [-60, 0, 60]
       expect(binIndices.length).to.equal(3);
       expect(quantities.length).to.equal(3);
 
-      // 모든 수량은 0이어야 함
+      // All quantities should be 0
       for (let i = 0; i < quantities.length; i++) {
         expect(quantities[i]).to.equal(0);
       }
     });
 
     it("Should correctly handle a range with a single bin", async function () {
-      // 단일 빈에 베팅
+      // Bet on a single bin
       await env.rangeBetManager
         .connect(env.user1)
         .buyTokens(
@@ -83,11 +83,11 @@ describe("Bin Range Query", function () {
           ethers.parseEther("150")
         );
 
-      // 단일 빈 쿼리
+      // Query a single bin
       const [binIndices, quantities] =
         await env.rangeBetManager.getBinQuantitiesInRange(env.marketId, 0, 0);
 
-      // 하나의 빈만 있어야 함
+      // Should have only one bin
       expect(binIndices.length).to.equal(1);
       expect(quantities.length).to.equal(1);
       expect(binIndices[0]).to.equal(0);
@@ -95,16 +95,16 @@ describe("Bin Range Query", function () {
     });
 
     it("Should revert for invalid range parameters", async function () {
-      // toBinIndex < fromBinIndex인 경우
+      // Case: toBinIndex < fromBinIndex
       await expect(
         env.rangeBetManager.getBinQuantitiesInRange(env.marketId, 60, -60)
       ).to.be.revertedWith("fromBinIndex must be <= toBinIndex");
 
-      // 범위를 벗어난 경우
+      // Case: Out of range
       await expect(
         env.rangeBetManager.getBinQuantitiesInRange(
           env.marketId,
-          -420, // minTick(-360)보다 작음
+          -420, // Less than minTick(-360)
           0
         )
       ).to.be.revertedWith("Bin index out of range");
@@ -113,15 +113,15 @@ describe("Bin Range Query", function () {
         env.rangeBetManager.getBinQuantitiesInRange(
           env.marketId,
           0,
-          420 // maxTick(360)보다 큼
+          420 // Greater than maxTick(360)
         )
       ).to.be.revertedWith("Bin index out of range");
 
-      // tickSpacing의 배수가 아닌 경우
+      // Case: Not a multiple of tickSpacing
       await expect(
         env.rangeBetManager.getBinQuantitiesInRange(
           env.marketId,
-          -61, // 60의 배수가 아님
+          -61, // Not a multiple of 60
           0
         )
       ).to.be.revertedWith("fromBinIndex not multiple of tickSpacing");
@@ -130,7 +130,7 @@ describe("Bin Range Query", function () {
         env.rangeBetManager.getBinQuantitiesInRange(
           env.marketId,
           0,
-          61 // 60의 배수가 아님
+          61 // Not a multiple of 60
         )
       ).to.be.revertedWith("toBinIndex not multiple of tickSpacing");
     });
@@ -241,7 +241,7 @@ describe("Bin Range Query", function () {
       // Out of range bin
       const calculatedX1 = await env.rangeBetManager.calculateXForBin(
         env.marketId,
-        -420, // minTick(-360)보다 작음
+        -420, // Less than minTick(-360)
         ethers.parseEther("100")
       );
 
@@ -250,7 +250,7 @@ describe("Bin Range Query", function () {
       // Not a multiple of tick spacing
       const calculatedX2 = await env.rangeBetManager.calculateXForBin(
         env.marketId,
-        61, // 60의 배수가 아님
+        61, // Not a multiple of 60
         ethers.parseEther("100")
       );
 

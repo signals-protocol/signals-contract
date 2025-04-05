@@ -126,8 +126,8 @@ describe("Reward Claims", function () {
     ).to.equal(0);
   });
 
-  // 추가 테스트: 마켓이 닫히지 않은 상태에서 보상 청구 시도
-  it("Should not allow claiming rewards from market that is not closed", async function () {
+  // Additional test: Attempt to claim rewards when market is not closed
+  it("Should revert when market is not closed", async function () {
     // Try to claim from a market that is not closed
     await expect(
       env.rangeBetManager.connect(env.user1).claimReward(env.marketId, 0)
@@ -142,8 +142,8 @@ describe("Reward Claims", function () {
     ).to.be.revertedWith("Market is not closed");
   });
 
-  // 추가 테스트: 보유 토큰이 전혀 없는 유저가 claimReward 시도
-  it("Should not allow users with no tokens to claim rewards", async function () {
+  // Additional test: Attempt to claim rewards when user has no tokens
+  it("Should revert when user has no tokens", async function () {
     // Close the market and set bin 0 as winner
     await env.rangeBetManager.closeMarket(0);
 

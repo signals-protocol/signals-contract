@@ -47,7 +47,7 @@ describe("Market Management", function () {
       );
   });
 
-  // 추가 테스트: deactivateMarket를 이미 비활성인 마켓에 또 호출
+  // Additional test: Calling deactivateMarket on already inactive market
   it("Should allow deactivating an already inactive market (idempotent operation)", async function () {
     // First deactivation
     await env.rangeBetManager.deactivateMarket(env.marketId);
@@ -64,7 +64,7 @@ describe("Market Management", function () {
     expect(marketInfo[0]).to.be.false; // active = false
   });
 
-  // 추가 테스트: activateMarket를 이미 active인 마켓에 또 호출
+  // Additional test: Calling activateMarket on already active market
   it("Should allow activating an already active market (idempotent operation)", async function () {
     // Market is active by default after creation
     let marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
@@ -78,27 +78,17 @@ describe("Market Management", function () {
     expect(marketInfo[0]).to.be.true; // active = true
   });
 
-  // 추가 테스트: 닫힌 마켓을 활성화/비활성화 시도
+  // Additional test: Attempt to activate/deactivate a closed market
   it("Should not allow activating or deactivating a closed market", async function () {
-    // Set up a bet to make the market interesting
-    await env.rangeBetManager
-      .connect(env.user1)
-      .buyTokens(
-        env.marketId,
-        [0],
-        [ethers.parseEther("100")],
-        ethers.parseEther("150")
-      );
-
-    // Close the market
+    // Close the market first
     await env.rangeBetManager.closeMarket(0);
 
-    // Try to deactivate closed market
+    // Attempt to deactivate a closed market
     await expect(
       env.rangeBetManager.deactivateMarket(env.marketId)
     ).to.be.revertedWith("Market is already closed");
 
-    // Try to activate closed market
+    // Attempt to activate a closed market
     await expect(
       env.rangeBetManager.activateMarket(env.marketId)
     ).to.be.revertedWith("Market is already closed");

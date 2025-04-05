@@ -3,18 +3,18 @@ import { ethers, network } from "hardhat";
 async function main() {
   console.log("Interacting with deployed contracts...");
 
-  // 네트워크에 따라 주소 설정
+  // Configure addresses based on network
   let rangeBetManagerAddress = "";
   let rangeBetTokenAddress = "";
   let collateralTokenAddress = "";
 
   if (network.name === "localhost") {
-    // 로컬 배포 주소 (deploy:local 출력에서 가져온 값)
+    // Local deployment addresses (get these values from deploy:local output)
     rangeBetManagerAddress = "0x0B306BF915C4d645ff596e518fAf3F9669b97016";
     rangeBetTokenAddress = "0x524F04724632eED237cbA3c37272e018b3A7967e";
     collateralTokenAddress = "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82";
   } else {
-    // Rootstock 테스트넷이나 다른 네트워크의 경우 명령줄 인자 사용
+    // Use command line arguments for Rootstock testnet or other networks
     const args = process.argv.slice(2);
 
     if (args.length < 3) {

@@ -143,38 +143,38 @@ library RangeBetMath {
     {
         // 1) Edge cases
         if (x == 0) {
-            return 0; // 판매량이 0인 경우는 에러가 아님, 수익도 0
+            return 0; // If sell amount is 0, return 0 revenue
         }
         
-        // x > q 이거나 x > T인 상황이라면, 실제로는 불가능한 판매
+        // If x > q or x > T, the sale is impossible
         require(x <= q, "Cannot sell more tokens than available in bin");
         require(x <= T, "Cannot sell more tokens than total supply");
         
-        // T == x 인 경우도 로그에서 분모가 0이 되어 수학적으로 불가
+        // If T == x, the logarithm would have 0 in denominator, which is mathematically impossible
         require(x < T, "Cannot sell entire market supply (T=x)");
 
-        // 2) 고정소수점 변환
+        // 2) Convert to fixed-point
         UD60x18 xUD = ud(x);
         UD60x18 qUD = ud(q);
         UD60x18 TUD = ud(T);
 
-        // 3) ( T / (T - x) ) 계산
+        // 3) Calculate ( T / (T - x) )
         UD60x18 ratio = TUD.div(TUD.sub(xUD));
         UD60x18 logTerm = ratio.ln();
 
-        // 4) x + (q - T)*ln( T / (T - x) )
+        // 4) Calculate x + (q - T)*ln( T / (T - x) )
         UD60x18 revenue = xUD;
         
         if (q != T) {
             if (q > T) {
-                // q > T 일 경우, (q - T) 항이 양수이므로 더하기
+                // If q > T, the (q - T) term is positive, so add
                 UD60x18 qMinusT = qUD.sub(TUD);
                 revenue = revenue.add(qMinusT.mul(logTerm));
             } else {
-                // q < T 일 경우, (q - T) 항이 음수이므로 빼기
+                // If q < T, the (q - T) term is negative, so subtract
                 UD60x18 TMinusq = TUD.sub(qUD);
                 
-                // 언더플로우 방지 - 로그 항이 너무 커서 x보다 크면 오류
+                // Prevent underflow - if the log term is too large compared to x, error
                 require(TMinusq.mul(logTerm) <= revenue, "Underflow in sell calculation");
                 
                 revenue = revenue.sub(TMinusq.mul(logTerm));

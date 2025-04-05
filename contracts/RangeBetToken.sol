@@ -57,7 +57,7 @@ contract RangeBetToken is ERC1155 {
      */
     function mintBatch(address to, uint256[] calldata ids, uint256[] calldata amounts) external onlyManager {
         _mintBatch(to, ids, amounts, "");
-        // ERC1155 표준에서는 TransferBatch 이벤트가 자동으로 발행됩니다.
+        // ERC1155 standard automatically emits a TransferBatch event
     }
 
     /**

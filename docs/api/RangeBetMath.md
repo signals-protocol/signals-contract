@@ -201,6 +201,35 @@ function calculateX(uint256 cost, uint256 q, uint256 T) public pure returns (uin
 }
 ```
 
+### calculateSellCost
+
+```solidity
+function calculateSellCost(uint256 x, uint256 q, uint256 T) public pure returns (uint256)
+```
+
+Calculates the revenue (in collateral) that would be received from selling tokens.
+
+#### Parameters
+
+- `x`: Amount of tokens to sell
+- `q`: Current token quantity in the bin
+- `T`: Total token supply for the market
+
+#### Return Value
+
+- Revenue in collateral tokens for selling the specified amount
+
+#### Conditions
+
+- `x` must not exceed the bin's token quantity (`x <= q`).
+- `x` must not exceed the total token supply (`x <= T`).
+- `x` must be less than the total token supply (`x < T`) to avoid division by zero in the logarithm calculation.
+
+#### Implementation Details
+
+This function calculates the revenue based on the inverse of the buying formula, using the integral:
+∫(q - t)/(T - t) dt = x + (q - T) \* ln(T / (T - x))
+
 ## Usage Examples
 
 ### Usage in RangeBetManager

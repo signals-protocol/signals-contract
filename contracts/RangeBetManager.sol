@@ -36,7 +36,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     IERC20 public collateralToken;
     uint256 public marketCount;
     mapping(uint256 => Market) public markets;
-    uint256 public lastClosedMarketId;  // 가장 최근에 닫힌 마켓의 ID
+    uint256 public lastClosedMarketId;  // ID of the most recently closed market
 
     // Events
     event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick, uint256 openTimestamp, uint256 closeTimestamp);
@@ -233,18 +233,18 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
      * @param winningBin The bin that won (where the actual value landed)
      */
     function closeMarket(int256 winningBin) external onlyOwner {
-        // 다음으로 닫을 마켓 ID 계산
+        // Calculate the next market ID to close
         uint256 marketId;
         
         if (lastClosedMarketId == type(uint256).max) {
-            // 첫 번째 마켓 닫기
+            // Close the first market
             marketId = 0;
         } else {
-            // 다음 마켓 닫기
+            // Close the next market
             marketId = lastClosedMarketId + 1;
         }
         
-        // 해당 마켓이 존재하는지 확인
+        // Check if the market exists
         require(marketId < marketCount, "No more markets to close");
         
         Market storage market = markets[marketId];
@@ -256,7 +256,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         market.closed = true;
         market.winningBin = winningBin;
         
-        // 마지막으로 닫힌 마켓 ID 업데이트
+        // Update the last closed market ID
         lastClosedMarketId = marketId;
         
         emit MarketClosed(marketId, winningBin);
@@ -462,11 +462,11 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev 매도 시 수익(=collateral)을 계산하는 뷰 함수
-     * @param marketId 해당 마켓 ID
-     * @param binIndex 해당 Bin Index
-     * @param amount 판매할 토큰 수량
-     * @return sellRevenue amount개의 토큰을 bin에서 매도할 때 받을 수 있는 수익
+     * @dev A view function to calculate the revenue (collateral) when selling tokens
+     * @param marketId The market ID
+     * @param binIndex The bin index
+     * @param amount The token amount to sell
+     * @return sellRevenue The revenue from selling the specified amount of tokens in the bin
      */
     function calculateBinSellCost(
         uint256 marketId,
@@ -477,22 +477,22 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         view
         returns (uint256 sellRevenue)
     {
-        // 1) 마켓 정보 가져오기
+        // 1) Get market information
         Market storage market = markets[marketId];
         
-        // 2) 마켓 상태 검증
-        // 이미 closed된 마켓이라도 "이론적" 계산은 가능
+        // 2) Validate market state
+        // "Theoretical" calculation is possible even for closed markets
         require(market.active || market.closed, "Market is not active or closed");
         
-        // 올바른 bin인지 확인
+        // Check if the bin is valid
         require(binIndex % int256(market.tickSpacing) == 0, "Bin index must be a multiple of tick spacing");
         require(binIndex >= market.minTick && binIndex <= market.maxTick, "Bin index out of range");
 
-        // 3) bin 에 들어있는 토큰 q, 전체 T
+        // 3) Get tokens in the bin (q) and total supply (T)
         uint256 qBin = market.q[binIndex];
         uint256 Tcurrent = market.T;
 
-        // 4) RangeBetMath 이용해 수익 계산 (이 함수 내에서 추가 검증 수행)
+        // 4) Calculate revenue using RangeBetMath (additional validation inside the function)
         sellRevenue = RangeBetMath.calculateSellCost(
             amount, 
             qBin, 

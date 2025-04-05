@@ -8,7 +8,7 @@ describe("Sequential Market Close", function () {
   beforeEach(async function () {
     env = await setupTestEnvironment();
 
-    // 추가 마켓 생성
+    // Create additional markets
     const tx1 = await env.rangeBetManager.createMarket(
       env.tickSpacing,
       env.minTick,
@@ -35,12 +35,12 @@ describe("Sequential Market Close", function () {
       ) as any
     ).args[0];
 
-    // 생성된 마켓 ID 저장
+    // Save created market IDs
     env.marketId1 = marketId1;
     env.marketId2 = marketId2;
 
-    // 각 마켓에 기본 토큰 구매
-    // 마켓 0
+    // Buy tokens in each market
+    // Market 0
     await env.rangeBetManager
       .connect(env.user1)
       .buyTokens(
@@ -50,7 +50,7 @@ describe("Sequential Market Close", function () {
         ethers.parseEther("150")
       );
 
-    // 마켓 1
+    // Market 1
     await env.rangeBetManager
       .connect(env.user2)
       .buyTokens(
@@ -60,7 +60,7 @@ describe("Sequential Market Close", function () {
         ethers.parseEther("150")
       );
 
-    // 마켓 2
+    // Market 2
     await env.rangeBetManager
       .connect(env.user3)
       .buyTokens(
@@ -72,82 +72,82 @@ describe("Sequential Market Close", function () {
   });
 
   it("Should close markets sequentially and track last closed market ID", async function () {
-    // 초기 lastClosedMarketId 확인
+    // Check initial lastClosedMarketId
     const initialLastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(initialLastClosed).to.equal(ethers.MaxUint256); // max uint256 value
 
-    // 첫 번째 마켓 닫기 (marketId = 0)
+    // Close first market (marketId = 0)
     await env.rangeBetManager.closeMarket(0);
     let lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(0);
 
-    // 마켓 0이 닫혔는지 확인
+    // Verify market 0 is closed
     let marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
     expect(marketInfo[1]).to.be.true; // closed = true
 
-    // 두 번째 마켓 닫기 (marketId = 1)
+    // Close second market (marketId = 1)
     await env.rangeBetManager.closeMarket(60);
     lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(1);
 
-    // 마켓 1이 닫혔는지 확인
+    // Verify market 1 is closed
     marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId1);
     expect(marketInfo[1]).to.be.true; // closed = true
 
-    // 세 번째 마켓 닫기 (marketId = 2)
+    // Close third market (marketId = 2)
     await env.rangeBetManager.closeMarket(-60);
     lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(2);
 
-    // 마켓 2가 닫혔는지 확인
+    // Verify market 2 is closed
     marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId2);
     expect(marketInfo[1]).to.be.true; // closed = true
   });
 
   it("Should enforce sequential market closing", async function () {
-    // 첫 번째 마켓을 비활성화해보기
+    // Try deactivating the first market
     await env.rangeBetManager.deactivateMarket(env.marketId);
 
-    // 비활성화된 마켓을 닫으려고 시도 - 실패해야 함
+    // Try to close deactivated market - should fail
     await expect(env.rangeBetManager.closeMarket(0)).to.be.revertedWith(
       "Market is not active"
     );
 
-    // lastClosedMarketId는 여전히 초기값이어야 함
+    // lastClosedMarketId should still be initial value
     let lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(ethers.MaxUint256);
 
-    // 다시 활성화
+    // Reactivate market
     await env.rangeBetManager.activateMarket(env.marketId);
 
-    // 첫 번째 마켓 닫기 (정상 작동)
+    // Close first market (should work now)
     await env.rangeBetManager.closeMarket(0);
 
-    // lastClosedMarketId 업데이트 확인
+    // Verify lastClosedMarketId is updated
     lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(0);
 
-    // 다음 마켓이 자동으로 타겟팅되는지 확인
-    // 두 번째 마켓도 닫기
+    // Verify next market is automatically targeted
+    // Close second market
     await env.rangeBetManager.closeMarket(60);
     lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(1);
   });
 
   it("Should return appropriate error when no more markets to close", async function () {
-    // 모든 마켓 닫기
-    await env.rangeBetManager.closeMarket(0); // 마켓 0
-    await env.rangeBetManager.closeMarket(60); // 마켓 1
-    await env.rangeBetManager.closeMarket(-60); // 마켓 2
+    // Close all markets
+    await env.rangeBetManager.closeMarket(0); // Market 0
+    await env.rangeBetManager.closeMarket(60); // Market 1
+    await env.rangeBetManager.closeMarket(-60); // Market 2
 
-    // 더 이상 닫을 마켓이 없을 때 다시 시도 - 실패해야 함
+    // Try closing again when no more markets - should fail
     await expect(env.rangeBetManager.closeMarket(0)).to.be.revertedWith(
       "No more markets to close"
     );
   });
 
   it("Should work with batch created markets", async function () {
-    // Batch로 추가 마켓 생성
+    // Create additional markets in batch
     const batchTx = await env.rangeBetManager.createBatchMarkets(
       [env.tickSpacing, env.tickSpacing],
       [env.minTick, env.minTick],
@@ -155,18 +155,18 @@ describe("Sequential Market Close", function () {
       [env.closeTime, env.closeTime]
     );
 
-    // 현재까지 생성된 마켓 수 (0, 1, 2, 3, 4)
+    // Total markets created (0, 1, 2, 3, 4)
     const marketCount = await env.rangeBetManager.marketCount();
     expect(marketCount).to.equal(5);
 
-    // 순차적으로 마켓 닫기
-    await env.rangeBetManager.closeMarket(0); // 마켓 0
-    await env.rangeBetManager.closeMarket(60); // 마켓 1
-    await env.rangeBetManager.closeMarket(-60); // 마켓 2
-    await env.rangeBetManager.closeMarket(0); // 마켓 3
-    await env.rangeBetManager.closeMarket(60); // 마켓 4
+    // Close markets sequentially
+    await env.rangeBetManager.closeMarket(0); // Market 0
+    await env.rangeBetManager.closeMarket(60); // Market 1
+    await env.rangeBetManager.closeMarket(-60); // Market 2
+    await env.rangeBetManager.closeMarket(0); // Market 3
+    await env.rangeBetManager.closeMarket(60); // Market 4
 
-    // 마지막으로 닫힌 마켓 ID 확인
+    // Verify last closed market ID
     const lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(4);
   });

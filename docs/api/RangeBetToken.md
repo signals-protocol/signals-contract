@@ -88,6 +88,11 @@ Mints tokens for multiple token IDs at once.
 
 - The function caller must be the `manager`.
 
+#### Events
+
+- No explicit `TokenMinted` events are emitted in this function
+- ERC1155 standard automatically emits a `TransferBatch` event
+
 ### burn
 
 ```solidity

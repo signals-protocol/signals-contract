@@ -258,63 +258,59 @@ describe("RangeBetMath", function () {
       expect(revenue).to.be.gt(x);
     });
 
-    it("Should verify buy/sell symmetry for partial amounts", async function () {
-      // 초기 상태: bin q=0, 전체 T=0
-      // A 사용자가 x=10 매수 (비용 = 10, 첫 매수)
-      // 매수 후 상태: q=10, T=10
-      // 이제 x=5 매도 -> 수익 계산: sellRevenue(5; 10, 10) = 5
+    it("Should handle basic buy then sell scenario", async function () {
+      // Initial state: bin q=0, total T=0
+      // User A buys x=10 (cost = 10, first buy)
+      // After buy: q=10, T=10
+      // Now sell x=5 -> calculate revenue: sellRevenue(5; 10, 10) = 5
 
-      const initialBuy = ethers.parseEther("10");
-      const partialSell = ethers.parseEther("5");
+      // First buy: cost is equal to amount for first buy
+      const buyAmount = ethers.parseEther("10");
 
-      // 매수 후 상태: q=10, T=10
-      const q = initialBuy;
-      const T = initialBuy;
+      // After buy: q=10, T=10
+      const q = buyAmount;
+      const T = buyAmount;
 
-      // 매도 수익 계산
+      // Calculate sell revenue
+      const sellAmount = ethers.parseEther("5");
       const sellRevenue = await rangeBetMath.calculateSellCost(
-        partialSell,
-        q, // q = 10
-        T // T = 10
+        sellAmount,
+        q,
+        T
       );
 
-      // 매도 수익이 정확히 5가 되어야 함 (q=T 이므로)
-      expect(sellRevenue).to.equal(partialSell);
+      // Sell revenue should be exactly 5 (since q=T)
+      expect(sellRevenue).to.equal(sellAmount);
 
-      // 잔여 토큰 5개에 대한 추가 매도 테스트
-      const remainingTokens = initialBuy - partialSell;
+      // Test additional sell for remaining tokens
+      const remainingSellAmount = q - sellAmount;
 
-      // 첫 매도 후 상태: q=5, T=5가 아니라, bin 상태는 그대로 유지
-      // 단지 계산만 하는 함수이므로 실제 상태를 변경하지는 않음
-      // 두 번째 매도에 대해 q와 T 값은 여전히 초기값 유지
-      const additionalSellRevenue = await rangeBetMath.calculateSellCost(
-        remainingTokens,
-        q, // q는 여전히 10
-        T // T는 여전히 10
+      // First sell doesn't change bin state, it's just a calculation
+      // The bin state is still q=10, T=10
+      const remainingSellRevenue = await rangeBetMath.calculateSellCost(
+        remainingSellAmount,
+        q,
+        T
       );
 
-      // 두 번째 매도 수익도 정확히 5가 되어야 함 (q=T 이므로)
-      expect(additionalSellRevenue).to.equal(remainingTokens);
-
-      // 총 매도 수익 = 첫 매도(5) + 두번째 매도(5) = 10
-      const totalSellRevenue = sellRevenue + additionalSellRevenue;
-      expect(totalSellRevenue).to.equal(initialBuy);
+      // Remaining sell revenue should also equal remaining amount (q=T case)
+      expect(remainingSellRevenue).to.equal(remainingSellAmount);
     });
 
     it("Should handle complex buy then sell scenario", async function () {
-      // 초기 상태: q=0, T=0
-      // 1) 10 토큰 매수 -> 비용 10
-      // 2) q=10, T=10 상태에서 추가로 2 더 매수 -> 로그항 있는 비용 계산
-      // 3) q=12, T=12 상태에서 6 매도 -> 수익 계산
+      // Initial state: q=0, T=0
+      // 1) First buy 10 tokens -> cost 10
+      // 2) With q=10, T=10, buy 2 more -> cost calculated with log term
+      // 3) With q=12, T=12, sell 6 -> calculate revenue
 
-      // 1단계: 첫 매수 (비용 = 10)
+      // Step 1: First buy (cost = 10)
       const firstBuy = ethers.parseEther("10");
 
-      // 첫 매수 후 상태: q=10, T=10
+      // After first buy: q=10, T=10
       const q1 = firstBuy;
       const T1 = firstBuy;
 
-      // 2단계: 추가 매수
+      // Step 2: Additional buy
       const secondBuy = ethers.parseEther("2");
       const secondBuyCost = await rangeBetMath.calculateCost(
         secondBuy,
@@ -322,11 +318,11 @@ describe("RangeBetMath", function () {
         T1 // T = 10
       );
 
-      // 추가 매수 후 상태: q=12, T=12
+      // After additional buy: q=12, T=12
       const q2 = q1 + secondBuy;
       const T2 = T1 + secondBuy;
 
-      // 3단계: 부분 매도
+      // Step 3: Partial sell
       const partialSell = ethers.parseEther("6");
       const sellRevenue = await rangeBetMath.calculateSellCost(
         partialSell,
@@ -334,27 +330,27 @@ describe("RangeBetMath", function () {
         T2 // T = 12
       );
 
-      // 검증: 매도 수익은 정확히 6이어야 함 (q=T 이므로)
+      // Verify: Sell revenue should be exactly 6 (q=T case)
       expect(sellRevenue).to.equal(partialSell);
 
-      // 잔여 토큰에 대한 매도 테스트
-      // 참고: 실제 상태 변경은 없으므로, 그대로 q2와 T2 사용
+      // Test selling remaining tokens
+      // Note: No actual state change, so still using q2 and T2
       const remainingSellAmount = q2 - partialSell; // 6
       const remainingSellRevenue = await rangeBetMath.calculateSellCost(
-        remainingSellAmount, // 남은 토큰 수 = 6
-        q2, // q = 12 (상태는 변경되지 않음)
-        T2 // T = 12 (상태는 변경되지 않음)
+        remainingSellAmount, // Remaining tokens = 6
+        q2, // q = 12 (state unchanged)
+        T2 // T = 12 (state unchanged)
       );
 
-      // 검증: 잔여 매도 수익은 잔여량과 같아야 함 (q=T 이므로)
+      // Verify: Remaining sell revenue should equal remaining amount (q=T case)
       expect(remainingSellRevenue).to.equal(remainingSellAmount);
 
-      // 총 매도 수익
+      // Total sell revenue
       const totalSellRevenue = sellRevenue + remainingSellRevenue;
-      // 총 매수 비용
+      // Total buy cost
       const totalBuyCost = firstBuy + secondBuyCost;
 
-      // 검증: 총 매도 수익과 총 매수 비용이 유사해야 함
+      // Verify: Total sell revenue should be close to total buy cost
       expect(totalSellRevenue).to.be.closeTo(
         totalBuyCost,
         ethers.parseEther("0.001")

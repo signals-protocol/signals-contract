@@ -88,70 +88,7 @@ describe("Utility Functions", function () {
 
   describe("calculateBinSellCost", function () {
     it("Should calculate sell revenue correctly in normal case", async function () {
-      // 1) 먼저 마켓에 토큰을 매수
-      await env.rangeBetManager.connect(env.user1).buyTokens(
-        env.marketId,
-        [0], // bin index 0
-        [ethers.parseEther("100")], // 100 tokens
-        ethers.parseEther("150") // max collateral
-      );
-
-      // 2) 이제 sell 비용 계산
-      const sellAmount = ethers.parseEther("50"); // 50 tokens
-      const sellRevenue = await env.rangeBetManager.calculateBinSellCost(
-        env.marketId,
-        0, // 같은 bin
-        sellAmount
-      );
-
-      // 3) 검증: q=T 상태에서는 sellRevenue는 sellAmount와 동일해야 함
-      expect(sellRevenue).to.equal(sellAmount);
-    });
-
-    it("Should handle multiple bins correctly", async function () {
-      // 1) 각 bin별로 따로 매수 (각 bin의 q와 전체 T가 모두 증가하도록)
-      // 먼저 첫 번째 bin에 토큰 매수
-      await env.rangeBetManager.connect(env.user1).buyTokens(
-        env.marketId,
-        [0], // bin index 0
-        [ethers.parseEther("50")], // 50 tokens
-        ethers.parseEther("100") // max collateral
-      );
-
-      // 두 번째 bin에 추가 매수
-      await env.rangeBetManager.connect(env.user1).buyTokens(
-        env.marketId,
-        [60], // bin index 60
-        [ethers.parseEther("50")], // 50 tokens
-        ethers.parseEther("100") // max collateral
-      );
-
-      // 2) 첫 번째 bin에서 일부 매도 비용 계산
-      const sellAmount1 = ethers.parseEther("25"); // 25 tokens
-      const sellRevenue1 = await env.rangeBetManager.calculateBinSellCost(
-        env.marketId,
-        0,
-        sellAmount1
-      );
-
-      // 3) 두 번째 bin에서 일부 매도 비용 계산
-      const sellAmount2 = ethers.parseEther("25"); // 25 tokens
-      const sellRevenue2 = await env.rangeBetManager.calculateBinSellCost(
-        env.marketId,
-        60,
-        sellAmount2
-      );
-
-      // 4) 이 경우 각 bin의 q값은 각각 50, 전체 T는 100임
-      // q1=50, q2=50, T=100인 상태에서는 q!=T 이므로 로그항 계산이 들어감
-      // 따라서 sell amount와 정확히 같지는 않을 수 있음
-      // 이 테스트에서는 단지 계산이 성공적으로 이루어지는지만 확인
-      expect(sellRevenue1).to.be.gt(0);
-      expect(sellRevenue2).to.be.gt(0);
-    });
-
-    it("Should revert for inactive market", async function () {
-      // 1) 먼저 마켓에 토큰을 매수
+      // 1) First buy tokens in the market
       await env.rangeBetManager
         .connect(env.user1)
         .buyTokens(
@@ -161,10 +98,75 @@ describe("Utility Functions", function () {
           ethers.parseEther("150")
         );
 
-      // 2) 마켓 비활성화
+      // 2) Now calculate sell cost
+      const sellAmount = ethers.parseEther("50");
+      const sellRevenue = await env.rangeBetManager.calculateBinSellCost(
+        env.marketId,
+        0,
+        sellAmount
+      );
+
+      // 3) Verification: In q=T state, sellRevenue should equal sellAmount
+      expect(sellRevenue).to.equal(sellAmount);
+    });
+
+    it("Should calculate sell costs correctly for multiple bins", async function () {
+      // 1) Buy tokens in separate bins (increasing q for each bin and T overall)
+      await env.rangeBetManager
+        .connect(env.user1)
+        .buyTokens(
+          env.marketId,
+          [0],
+          [ethers.parseEther("50")],
+          ethers.parseEther("100")
+        );
+
+      await env.rangeBetManager
+        .connect(env.user1)
+        .buyTokens(
+          env.marketId,
+          [60],
+          [ethers.parseEther("50")],
+          ethers.parseEther("100")
+        );
+
+      // 2) Calculate sell cost for first bin
+      const sellAmount1 = ethers.parseEther("25");
+      const sellRevenue1 = await env.rangeBetManager.calculateBinSellCost(
+        env.marketId,
+        0,
+        sellAmount1
+      );
+
+      // 3) Calculate sell cost for second bin
+      const sellAmount2 = ethers.parseEther("25");
+      const sellRevenue2 = await env.rangeBetManager.calculateBinSellCost(
+        env.marketId,
+        60,
+        sellAmount2
+      );
+
+      // 4) In this case, each bin's q is 50, and total T is 100
+      // For q < T, the sell revenue should be less than sell amount
+      expect(sellRevenue1).to.be.lt(sellAmount1);
+      expect(sellRevenue2).to.be.lt(sellAmount2);
+    });
+
+    it("Should revert for inactive market", async function () {
+      // 1) First buy tokens in the market
+      await env.rangeBetManager
+        .connect(env.user1)
+        .buyTokens(
+          env.marketId,
+          [0],
+          [ethers.parseEther("100")],
+          ethers.parseEther("150")
+        );
+
+      // 2) Market deactivation
       await env.rangeBetManager.deactivateMarket(env.marketId);
 
-      // 3) 매도 비용 계산 시도 - 이제 revert 예상
+      // 3) Try to calculate sell cost - expect revert
       await expect(
         env.rangeBetManager.calculateBinSellCost(
           env.marketId,
@@ -175,29 +177,29 @@ describe("Utility Functions", function () {
     });
 
     it("Should revert for out of range bin index", async function () {
-      // 범위를 벗어난 bin index에 대한 매도 비용 계산
+      // Sell cost calculation for bin index outside the range
       await expect(
         env.rangeBetManager.calculateBinSellCost(
           env.marketId,
-          600, // 범위 밖
+          600, // Outside range
           ethers.parseEther("50")
         )
       ).to.be.revertedWith("Bin index out of range");
     });
 
     it("Should revert for invalid bin index", async function () {
-      // tickSpacing의 배수가 아닌 bin index에 대한 매도 비용 계산
+      // Sell cost calculation for bin index that's not a multiple of tickSpacing
       await expect(
         env.rangeBetManager.calculateBinSellCost(
           env.marketId,
-          61, // 60의 배수가 아님
+          61, // Not a multiple of 60
           ethers.parseEther("50")
         )
       ).to.be.revertedWith("Bin index must be a multiple of tick spacing");
     });
 
     it("Should revert when trying to sell more than available", async function () {
-      // 1) 마켓에 일부 토큰 매수
+      // 1) First buy tokens in the market
       await env.rangeBetManager
         .connect(env.user1)
         .buyTokens(
@@ -207,31 +209,31 @@ describe("Utility Functions", function () {
           ethers.parseEther("100")
         );
 
-      // 2) 보유량보다 많은 토큰 매도 시도
+      // 2) Try to sell more tokens than available
       await expect(
         env.rangeBetManager.calculateBinSellCost(
           env.marketId,
           0,
-          ethers.parseEther("100") // 보유한 50보다 많음
+          ethers.parseEther("100") // More than available 50
         )
       ).to.be.revertedWith("Cannot sell more tokens than available in bin");
     });
 
     it("Should verify buy/sell symmetry with actual contract state", async function () {
-      // 1) 최초 매수
+      // 1) First buy
       const buyAmount = ethers.parseEther("100");
       const buyTx = await env.rangeBetManager
         .connect(env.user1)
         .buyTokens(env.marketId, [0], [buyAmount], ethers.parseEther("150"));
 
-      // 2) 매수 cost 확인 (처음 매수니까 buyAmount와 동일)
+      // 2) Buy cost verification (First buy, so buyAmount should be equal)
       const receipt = await buyTx.wait();
       const tokensBoughtEvent = receipt?.logs.find(
         (log: any) => log.fragment?.name === "TokensBought"
       );
       const buyCost = (tokensBoughtEvent as any).args[4]; // totalCost
 
-      // 3) 부분 매도 비용 계산 (50%)
+      // 3) Partial sell cost calculation (50%)
       const sellAmount = buyAmount / 2n;
       const sellRevenue1 = await env.rangeBetManager.calculateBinSellCost(
         env.marketId,
@@ -239,14 +241,14 @@ describe("Utility Functions", function () {
         sellAmount
       );
 
-      // 4) 나머지 매도 비용 계산 (나머지 50%)
+      // 4) Remaining sell cost calculation (Remaining 50%)
       const sellRevenue2 = await env.rangeBetManager.calculateBinSellCost(
         env.marketId,
         0,
         sellAmount
       );
 
-      // 5) 총 매도 수익은 매수 비용과 동일해야 함 (q=T 케이스)
+      // 5) Total sell revenue should be equal to buy cost (q=T case)
       const totalSellRevenue = sellRevenue1 + sellRevenue2;
       expect(totalSellRevenue).to.be.closeTo(
         buyCost,
@@ -261,39 +263,39 @@ describe("Utility Functions", function () {
     });
 
     it("Should have symmetry between buy and sell costs with existing liquidity", async function () {
-      // 1) 먼저 충분한 유동성을 생성 (다른 유저가 이미 포지션을 가짐)
+      // 1) First create sufficient liquidity (other user already has position)
       await env.rangeBetManager.connect(env.user1).buyTokens(
         env.marketId,
         [0], // bin index 0
-        [ethers.parseEther("1000")], // 1000 tokens의 큰 유동성
+        [ethers.parseEther("1000")], // Large liquidity of 1000 tokens
         ethers.parseEther("1100") // max collateral
       );
 
-      // 2) 이제 테스트 대상 유저(user2)가 매수
-      const buyAmount = ethers.parseEther("50"); // 50 tokens 매수
+      // 2) Now test user (user2) buys
+      const buyAmount = ethers.parseEther("50"); // Buy 50 tokens
       const buyTx = await env.rangeBetManager.connect(env.user2).buyTokens(
         env.marketId,
-        [0], // 같은 bin
+        [0], // Same bin
         [buyAmount],
-        ethers.parseEther("100") // 충분한 max collateral
+        ethers.parseEther("100") // Sufficient max collateral
       );
 
-      // 3) 매수 비용 확인
+      // 3) Buy cost verification
       const receipt = await buyTx.wait();
       const tokensBoughtEvent = receipt?.logs.find(
         (log: any) => log.fragment?.name === "TokensBought"
       );
       const buyCost = (tokensBoughtEvent as any).args[4]; // totalCost
 
-      // 4) 동일한 양에 대한 매도 비용 계산
+      // 4) Calculate sell cost for same amount
       const sellRevenue = await env.rangeBetManager.calculateBinSellCost(
         env.marketId,
         0,
-        buyAmount // 매수한 것과 동일한 양
+        buyAmount // Same amount as bought
       );
 
-      // 5) 매수 비용과 매도 수익은 근접해야 함 (AMM 원리상 완전히 동일하지는 않음)
-      // 특히 유동성이 이미 존재하는 상황에서는 더 근접할 것임
+      // 5) Buy cost and sell revenue should be close (AMM principle, not completely identical)
+      // Especially in situation where liquidity already exists
       expect(sellRevenue).to.be.closeTo(buyCost, ethers.parseEther("0.0001"));
 
       console.log(

@@ -42,22 +42,28 @@ struct Market {
 
 ```solidity
 event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick, uint256 openTimestamp, uint256 closeTimestamp);
-event TokensPurchased(uint256 indexed marketId, address indexed buyer, int256[] binIndices, uint256[] amounts, uint256 collateralAmount);
+event TokensBought(uint256 indexed marketId, address indexed buyer, int256[] binIndices, uint256[] amounts, uint256 totalCost);
 event MarketClosed(uint256 indexed marketId, int256 winningBin);
-event RewardClaimed(uint256 indexed marketId, address indexed claimer, int256 binIndex, uint256 tokenAmount, uint256 rewardAmount);
+event RewardClaimed(uint256 indexed marketId, address indexed claimer, int256 binIndex, uint256 amount);
 event CollateralWithdrawn(address indexed to, uint256 amount);
 ```
 
 ## Constructor
 
 ```solidity
-constructor(address _rangeBetToken, address _collateralToken) Ownable()
+constructor(address _collateralToken, string memory tokenURI) Ownable(msg.sender)
 ```
 
 ### Parameters
 
-- `_rangeBetToken`: RangeBetToken contract address
 - `_collateralToken`: Collateral token contract address
+- `tokenURI`: Base URI for token metadata
+
+### Effects
+
+- Initializes collateral token reference
+- Deploys a new RangeBetToken contract with provided URI
+- Sets the initial value of lastClosedMarketId to maximum uint256, indicating no markets have been closed yet
 
 ## Basic Functions
 
@@ -166,7 +172,7 @@ Purchases betting tokens for multiple bins in a specific market.
 
 #### Events
 
-- `TokensPurchased`: Emitted when tokens are purchased.
+- `TokensBought`: Emitted when tokens are purchased.
 
 ### closeMarket
 
@@ -188,7 +194,7 @@ Closes the next market in sequence (based on the lastClosedMarketId + 1) and set
 - The market must not be already closed.
 - The winning bin must be within the min/max tick range of the market.
 - The winning bin must be a multiple of `tickSpacing`.
-- The market to close is determined automatically as `lastClosedMarketId + 1` (or 0 if no markets have been closed yet).
+- **Important**: The market to close is determined automatically as `lastClosedMarketId + 1` (or 0 if no markets have been closed yet). This function does not take a marketId parameter.
 
 #### Effects
 
@@ -359,19 +365,6 @@ Calculates the amount of tokens that can be bought with the given cost for a spe
   - The bin index is outside the market's min/max tick range
   - The bin index is not a multiple of tick spacing
 
-### validateBinIndex
-
-```solidity
-function validateBinIndex(uint256 marketId, int256 binIndex) public view
-```
-
-Validates if a bin index is valid. Reverts if not valid.
-
-#### Parameters
-
-- `marketId`: Market ID
-- `binIndex`: Bin index to validate
-
 ### getBinQuantitiesInRange
 
 ```solidity
@@ -401,78 +394,35 @@ Retrieves token quantities for multiple bins in a market at once.
 - `fromBinIndex` and `toBinIndex` must be within the `minTick` and `maxTick` range.
 - `fromBinIndex` and `toBinIndex` must be multiples of `tickSpacing`.
 
-### Withdrawing Collateral
+### calculateBinSellCost
 
 ```solidity
-// Get contract instance
-RangeBetManager manager = RangeBetManager(managerAddress);
-
-// Withdraw all collateral (owner only)
-manager.withdrawAllCollateral(ownerAddress);
-```
-
-## Internal Functions
-
-### \_calculateCost
-
-```solidity
-function _calculateCost(
+function calculateBinSellCost(
     uint256 marketId,
-    int256[] calldata binIndices,
-    uint256[] calldata amounts
-) internal view returns (uint256 totalCost)
+    int256 binIndex,
+    uint256 amount
+) external view returns (uint256 sellRevenue)
 ```
 
-Calculates the cost of betting across multiple bins.
+Calculates the revenue (in collateral) that would be received from selling tokens.
 
 #### Parameters
 
 - `marketId`: Market ID
-- `binIndices`: Array of bin indices to bet on
-- `amounts`: Array of token quantities to purchase for each bin
+- `binIndex`: Bin index
+- `amount`: Amount of tokens to sell
 
 #### Return Value
 
-- `totalCost`: Total cost for all bins
+- `sellRevenue`: Revenue in collateral tokens for selling the specified amount
 
-### \_calculateBinCost
+#### Conditions
 
-```solidity
-function _calculateBinCost(
-    uint256 amount,
-    uint256 binQuantity,
-    uint256 totalSupply
-) internal pure returns (uint256)
-```
-
-Calculates the betting cost for a single bin.
-
-#### Parameters
-
-- `amount`: Token quantity to purchase
-- `binQuantity`: Current token quantity in the bin
-- `totalSupply`: Total token supply for the market
-
-#### Return Value
-
-- Calculated cost
-
-## Error Codes
-
-```solidity
-error MarketNotActive();
-error MarketAlreadyClosed();
-error InvalidBinIndex();
-error ArrayLengthMismatch();
-error ZeroAmount();
-error CollateralTransferFailed();
-error NotWinningBin();
-error NoTokens();
-error CollateralTooHigh();
-error MinTickGreaterThanMaxTick();
-error TickSpacingZero();
-error TickNotDivisibleBySpacing();
-```
+- The market must be active or closed.
+- The bin index must be within the min/max tick range.
+- The bin index must be a multiple of tick spacing.
+- Amount must not exceed the bin's token quantity.
+- Amount must be less than the total token supply (to avoid division by zero).
 
 ## Usage Examples
 
@@ -528,6 +478,8 @@ uint256 tokenAmount = manager.calculateXForBin(0, 0, 10 ether);
 RangeBetManager manager = RangeBetManager(managerAddress);
 
 // Close market (owner only)
+// The parameter is the winning bin, not the marketId
+// The function automatically determines which market to close next
 manager.closeMarket(0); // Close next market in sequence, bin 0 wins
 ```
 
