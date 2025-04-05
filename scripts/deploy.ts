@@ -10,7 +10,7 @@ async function main() {
   const collateralToken = await MockToken.deploy(
     "Mock Collateral",
     "MCOL",
-    ethers.parseEther("1000000000")
+    ethers.parseEther("100000000000000")
   );
   await collateralToken.waitForDeployment();
   const collateralTokenAddress = await collateralToken.getAddress();

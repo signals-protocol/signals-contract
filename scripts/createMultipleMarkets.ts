@@ -1,11 +1,35 @@
 import { ethers, network } from "hardhat";
+import * as dotenv from "dotenv";
+
+// .env 파일 로드
+dotenv.config();
 
 async function main() {
   console.log("Creating multiple markets...");
   console.log("Network:", network.name);
 
-  // 루트스탁 테스트넷 배포 주소 설정
-  const rangeBetManagerAddress = "0x78070bF4525A5A5600Ff97220139a6F77F840A96";
+  // 네트워크에 따라 RangeBetManager 주소 설정
+  let rangeBetManagerAddress = "";
+
+  if (network.name === "localhost") {
+    // 로컬 배포 주소 (배포 스크립트 출력에서 가져온 값)
+    rangeBetManagerAddress = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+  } else if (network.name === "rskTestnet") {
+    // RSK 테스트넷의 경우 환경 변수 사용
+    rangeBetManagerAddress = process.env.RSK_RANGE_BET_MANAGER || "";
+
+    if (!rangeBetManagerAddress) {
+      console.error("RSK_RANGE_BET_MANAGER is not set in the .env file");
+      process.exit(1);
+    }
+  } else {
+    // 다른 네트워크의 경우 환경 변수가 있는지 확인
+    console.error(
+      `RangeBetManager address for network '${network.name}' is not configured`
+    );
+    process.exit(1);
+  }
+
   console.log("Using RangeBetManager contract:", rangeBetManagerAddress);
 
   // Get contract instance
