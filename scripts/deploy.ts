@@ -2,6 +2,7 @@ import { ethers, network } from "hardhat";
 
 async function main() {
   console.log("Deployment started...");
+  console.log("Network:", network.name);
 
   // Deploy a mock ERC20 token to use as collateral
   console.log("Deploying MockCollateralToken...");
@@ -9,7 +10,7 @@ async function main() {
   const collateralToken = await MockToken.deploy(
     "Mock Collateral",
     "MCOL",
-    ethers.parseEther("10000000")
+    ethers.parseEther("1000000000")
   );
   await collateralToken.waitForDeployment();
   const collateralTokenAddress = await collateralToken.getAddress();
@@ -53,18 +54,28 @@ async function main() {
     console.log("Creating a sample market...");
     const tickSpacing = 60;
     const minTick = -360;
-    const maxTick = 360;
+    const maxTick = 120000;
+    // 마켓 종료 시간: 현재 시간으로부터 7일 후
+    const closeTime = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
 
     const createMarketTx = await rangeBetManager.createMarket(
       tickSpacing,
       minTick,
-      maxTick
+      maxTick,
+      closeTime
     );
     await createMarketTx.wait();
     console.log("Sample market created with parameters:");
     console.log("- tickSpacing:", tickSpacing);
     console.log("- minTick:", minTick);
     console.log("- maxTick:", maxTick);
+    console.log(
+      "- closeTime:",
+      closeTime,
+      "(",
+      new Date(closeTime * 1000).toLocaleString(),
+      ")"
+    );
   } catch (error) {
     console.error("Error with contract interaction:", error);
     console.log(

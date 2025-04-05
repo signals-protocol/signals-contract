@@ -1,11 +1,43 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 
 async function main() {
   console.log("Interacting with deployed contracts...");
 
+  // 네트워크에 따라 주소 설정
+  let rangeBetManagerAddress = "";
+  let rangeBetTokenAddress = "";
+  let collateralTokenAddress = "";
+
+  if (network.name === "localhost") {
+    // 로컬 배포 주소 (deploy:local 출력에서 가져온 값)
+    rangeBetManagerAddress = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+    rangeBetTokenAddress = "0x75537828f2ce51be7289709686A69CbFDbB714F1";
+    collateralTokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+  } else {
+    // Rootstock 테스트넷이나 다른 네트워크의 경우 명령줄 인자 사용
+    const args = process.argv.slice(2);
+
+    if (args.length < 3) {
+      console.error(
+        `Usage: yarn interact:${network.name} <rangeBetManagerAddress> <rangeBetTokenAddress> <collateralTokenAddress>`
+      );
+      process.exit(1);
+    }
+
+    rangeBetManagerAddress = args[0];
+    rangeBetTokenAddress = args[1];
+    collateralTokenAddress = args[2];
+  }
+
+  console.log("Using contract addresses:");
+  console.log("Network:", network.name);
+  console.log("RangeBetManager:", rangeBetManagerAddress);
+  console.log("RangeBetToken:", rangeBetTokenAddress);
+  console.log("CollateralToken:", collateralTokenAddress);
+
   // Get signers
   const [owner, user1, user2] = await ethers.getSigners();
-  console.log("Using accounts:");
+  console.log("\nUsing accounts:");
   console.log("Owner:", owner.address);
   console.log("User1:", user1.address);
   console.log("User2:", user2.address);
@@ -13,17 +45,17 @@ async function main() {
   // Get contract instances using the deployed addresses
   const rangeBetManager = await ethers.getContractAt(
     "RangeBetManager",
-    "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
+    rangeBetManagerAddress
   );
 
   const rangeBetToken = await ethers.getContractAt(
     "RangeBetToken",
-    "0x75537828f2ce51be7289709686A69CbFDbB714F1"
+    rangeBetTokenAddress
   );
 
   const collateralToken = await ethers.getContractAt(
     "MockCollateralToken",
-    "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+    collateralTokenAddress
   );
 
   // Check market info

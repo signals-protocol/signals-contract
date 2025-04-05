@@ -6,8 +6,9 @@ import "dotenv/config";
 const PRIVATE_KEY =
   process.env.PRIVATE_KEY ||
   "0x0000000000000000000000000000000000000000000000000000000000000000";
-// 이더스캔 API 키 (검증용)
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
+
+// Rootstock 테스트넷 RPC URL
+const ROOTSTOCK_TESTNET_URL = "https://public-node.testnet.rsk.co";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -28,19 +29,16 @@ const config: HardhatUserConfig = {
       url: "http://127.0.0.1:8545",
       chainId: 1337,
     },
-    sepolia: {
-      url:
-        process.env.SEPOLIA_URL || "https://sepolia.infura.io/v3/your-api-key",
+    rskTestnet: {
+      url: ROOTSTOCK_TESTNET_URL,
       accounts: [PRIVATE_KEY],
-      chainId: 11155111,
+      chainId: 31,
+      gasPrice: 60000000,
     },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: "USD",
-  },
-  etherscan: {
-    apiKey: ETHERSCAN_API_KEY,
   },
   paths: {
     sources: "./contracts",

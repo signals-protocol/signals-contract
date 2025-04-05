@@ -96,23 +96,24 @@ yarn node
 yarn deploy:local
 ```
 
-### 테스트넷 배포
+### Rootstock 테스트넷 배포
 
-Sepolia 테스트넷에 배포하려면:
+Rootstock 테스트넷에 배포하려면:
 
 1. `.env` 파일 생성 후 필요한 환경 변수 설정:
 
 ```
 PRIVATE_KEY=your_private_key_here
-SEPOLIA_URL=your_sepolia_rpc_url_here
-ETHERSCAN_API_KEY=your_etherscan_api_key_here
+ROOTSTOCK_TESTNET_URL=https://public-node.testnet.rsk.co
 ```
 
 2. 배포 실행:
 
 ```bash
-yarn deploy:sepolia
+yarn deploy:rsk
 ```
+
+자세한 배포 정보는 [README-ROOTSTOCK-DEPLOY.md](./README-ROOTSTOCK-DEPLOY.md) 파일을 참조하세요.
 
 ### 상호작용 테스트
 
@@ -120,7 +121,7 @@ yarn deploy:sepolia
 
 ```bash
 yarn interact:local  # 로컬 노드에 배포된 컨트랙트와 상호작용
-yarn interact:sepolia  # Sepolia에 배포된 컨트랙트와 상호작용
+yarn interact:rsk <rangeBetManagerAddress> <rangeBetTokenAddress> <collateralTokenAddress>  # Rootstock에 배포된 컨트랙트와 상호작용
 ```
 
 ## 시스템 작동 방식
@@ -133,7 +134,8 @@ yarn interact:sepolia  # Sepolia에 배포된 컨트랙트와 상호작용
 await rangeBetManager.createMarket(
   60, // tickSpacing: 틱 간격
   -360, // minTick: 최소 틱
-  360 // maxTick: 최대 틱
+  360, // maxTick: 최대 틱
+  closeTime // 예상 마켓 종료 시간
 );
 ```
 
