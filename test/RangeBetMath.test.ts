@@ -199,4 +199,171 @@ describe("RangeBetMath", function () {
       }
     });
   });
+
+  describe("calculateSellCost", function () {
+    it("Should return 0 for 0 tokens", async function () {
+      const revenue = await rangeBetMath.calculateSellCost(0, 100, 1000);
+      expect(revenue).to.equal(0);
+    });
+
+    it("Should revert when trying to sell more than q", async function () {
+      const x = ethers.parseEther("110");
+      const q = ethers.parseEther("100");
+      const T = ethers.parseEther("1000");
+
+      await expect(rangeBetMath.calculateSellCost(x, q, T)).to.be.revertedWith(
+        "Cannot sell more tokens than available in bin"
+      );
+    });
+
+    it("Should revert when trying to sell more than T", async function () {
+      const x = ethers.parseEther("1100");
+      const q = ethers.parseEther("1100");
+      const T = ethers.parseEther("1000");
+
+      await expect(rangeBetMath.calculateSellCost(x, q, T)).to.be.revertedWith(
+        "Cannot sell more tokens than total supply"
+      );
+    });
+
+    it("Should revert when trying to sell exactly T (edge case)", async function () {
+      const T = ethers.parseEther("1000");
+      const q = T;
+
+      await expect(rangeBetMath.calculateSellCost(T, q, T)).to.be.revertedWith(
+        "Cannot sell entire market supply (T=x)"
+      );
+    });
+
+    it("Should return exactly x for q=T case", async function () {
+      const x = ethers.parseEther("50");
+      const T = ethers.parseEther("100");
+      const revenue = await rangeBetMath.calculateSellCost(x, T, T);
+      expect(revenue).to.equal(x);
+    });
+
+    it("Should return less than x for q<T case", async function () {
+      const x = ethers.parseEther("50");
+      const q = ethers.parseEther("50");
+      const T = ethers.parseEther("100");
+      const revenue = await rangeBetMath.calculateSellCost(x, q, T);
+      expect(revenue).to.be.lt(x);
+    });
+
+    it("Should return more than x for q>T case", async function () {
+      const x = ethers.parseEther("50");
+      const q = ethers.parseEther("150");
+      const T = ethers.parseEther("100");
+      const revenue = await rangeBetMath.calculateSellCost(x, q, T);
+      expect(revenue).to.be.gt(x);
+    });
+
+    it("Should verify buy/sell symmetry for partial amounts", async function () {
+      // 초기 상태: bin q=0, 전체 T=0
+      // A 사용자가 x=10 매수 (비용 = 10, 첫 매수)
+      // 매수 후 상태: q=10, T=10
+      // 이제 x=5 매도 -> 수익 계산: sellRevenue(5; 10, 10) = 5
+
+      const initialBuy = ethers.parseEther("10");
+      const partialSell = ethers.parseEther("5");
+
+      // 매수 후 상태: q=10, T=10
+      const q = initialBuy;
+      const T = initialBuy;
+
+      // 매도 수익 계산
+      const sellRevenue = await rangeBetMath.calculateSellCost(
+        partialSell,
+        q, // q = 10
+        T // T = 10
+      );
+
+      // 매도 수익이 정확히 5가 되어야 함 (q=T 이므로)
+      expect(sellRevenue).to.equal(partialSell);
+
+      // 잔여 토큰 5개에 대한 추가 매도 테스트
+      const remainingTokens = initialBuy - partialSell;
+
+      // 첫 매도 후 상태: q=5, T=5가 아니라, bin 상태는 그대로 유지
+      // 단지 계산만 하는 함수이므로 실제 상태를 변경하지는 않음
+      // 두 번째 매도에 대해 q와 T 값은 여전히 초기값 유지
+      const additionalSellRevenue = await rangeBetMath.calculateSellCost(
+        remainingTokens,
+        q, // q는 여전히 10
+        T // T는 여전히 10
+      );
+
+      // 두 번째 매도 수익도 정확히 5가 되어야 함 (q=T 이므로)
+      expect(additionalSellRevenue).to.equal(remainingTokens);
+
+      // 총 매도 수익 = 첫 매도(5) + 두번째 매도(5) = 10
+      const totalSellRevenue = sellRevenue + additionalSellRevenue;
+      expect(totalSellRevenue).to.equal(initialBuy);
+    });
+
+    it("Should handle complex buy then sell scenario", async function () {
+      // 초기 상태: q=0, T=0
+      // 1) 10 토큰 매수 -> 비용 10
+      // 2) q=10, T=10 상태에서 추가로 2 더 매수 -> 로그항 있는 비용 계산
+      // 3) q=12, T=12 상태에서 6 매도 -> 수익 계산
+
+      // 1단계: 첫 매수 (비용 = 10)
+      const firstBuy = ethers.parseEther("10");
+
+      // 첫 매수 후 상태: q=10, T=10
+      const q1 = firstBuy;
+      const T1 = firstBuy;
+
+      // 2단계: 추가 매수
+      const secondBuy = ethers.parseEther("2");
+      const secondBuyCost = await rangeBetMath.calculateCost(
+        secondBuy,
+        q1, // q = 10
+        T1 // T = 10
+      );
+
+      // 추가 매수 후 상태: q=12, T=12
+      const q2 = q1 + secondBuy;
+      const T2 = T1 + secondBuy;
+
+      // 3단계: 부분 매도
+      const partialSell = ethers.parseEther("6");
+      const sellRevenue = await rangeBetMath.calculateSellCost(
+        partialSell,
+        q2, // q = 12
+        T2 // T = 12
+      );
+
+      // 검증: 매도 수익은 정확히 6이어야 함 (q=T 이므로)
+      expect(sellRevenue).to.equal(partialSell);
+
+      // 잔여 토큰에 대한 매도 테스트
+      // 참고: 실제 상태 변경은 없으므로, 그대로 q2와 T2 사용
+      const remainingSellAmount = q2 - partialSell; // 6
+      const remainingSellRevenue = await rangeBetMath.calculateSellCost(
+        remainingSellAmount, // 남은 토큰 수 = 6
+        q2, // q = 12 (상태는 변경되지 않음)
+        T2 // T = 12 (상태는 변경되지 않음)
+      );
+
+      // 검증: 잔여 매도 수익은 잔여량과 같아야 함 (q=T 이므로)
+      expect(remainingSellRevenue).to.equal(remainingSellAmount);
+
+      // 총 매도 수익
+      const totalSellRevenue = sellRevenue + remainingSellRevenue;
+      // 총 매수 비용
+      const totalBuyCost = firstBuy + secondBuyCost;
+
+      // 검증: 총 매도 수익과 총 매수 비용이 유사해야 함
+      expect(totalSellRevenue).to.be.closeTo(
+        totalBuyCost,
+        ethers.parseEther("0.001")
+      );
+
+      console.log(
+        `Total buy cost: ${ethers.formatEther(totalBuyCost)}, ` +
+          `Total sell revenue: ${ethers.formatEther(totalSellRevenue)}`
+      );
+    });
+  });
 });

@@ -124,4 +124,63 @@ library RangeBetMath {
             return right;
         }
     }
+
+    /**
+     * @dev Calculates the revenue (in collateral) that the user would receive
+     *      by selling `x` tokens in a bin currently holding `q` tokens,
+     *      when total supply is `T`.
+     *      Formula: ∫(q - t)/(T - t) dt = x + (q - T) * ln(T / (T - x))
+     *
+     * Requirements:
+     * - x <= q (cannot sell more than bin's tokens)
+     * - x <= T (cannot sell more than total supply)
+     * - T > x (to avoid ln(T/0))
+     */
+    function calculateSellCost(uint256 x, uint256 q, uint256 T)
+        public
+        pure
+        returns (uint256)
+    {
+        // 1) Edge cases
+        if (x == 0) {
+            return 0; // 판매량이 0인 경우는 에러가 아님, 수익도 0
+        }
+        
+        // x > q 이거나 x > T인 상황이라면, 실제로는 불가능한 판매
+        require(x <= q, "Cannot sell more tokens than available in bin");
+        require(x <= T, "Cannot sell more tokens than total supply");
+        
+        // T == x 인 경우도 로그에서 분모가 0이 되어 수학적으로 불가
+        require(x < T, "Cannot sell entire market supply (T=x)");
+
+        // 2) 고정소수점 변환
+        UD60x18 xUD = ud(x);
+        UD60x18 qUD = ud(q);
+        UD60x18 TUD = ud(T);
+
+        // 3) ( T / (T - x) ) 계산
+        UD60x18 ratio = TUD.div(TUD.sub(xUD));
+        UD60x18 logTerm = ratio.ln();
+
+        // 4) x + (q - T)*ln( T / (T - x) )
+        UD60x18 revenue = xUD;
+        
+        if (q != T) {
+            if (q > T) {
+                // q > T 일 경우, (q - T) 항이 양수이므로 더하기
+                UD60x18 qMinusT = qUD.sub(TUD);
+                revenue = revenue.add(qMinusT.mul(logTerm));
+            } else {
+                // q < T 일 경우, (q - T) 항이 음수이므로 빼기
+                UD60x18 TMinusq = TUD.sub(qUD);
+                
+                // 언더플로우 방지 - 로그 항이 너무 커서 x보다 크면 오류
+                require(TMinusq.mul(logTerm) <= revenue, "Underflow in sell calculation");
+                
+                revenue = revenue.sub(TMinusq.mul(logTerm));
+            }
+        }
+
+        return unwrap(revenue);
+    }
 } 

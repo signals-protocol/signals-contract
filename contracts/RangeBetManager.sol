@@ -460,4 +460,45 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
 
         return (binIndices, quantities);
     }
+
+    /**
+     * @dev 매도 시 수익(=collateral)을 계산하는 뷰 함수
+     * @param marketId 해당 마켓 ID
+     * @param binIndex 해당 Bin Index
+     * @param amount 판매할 토큰 수량
+     * @return sellRevenue amount개의 토큰을 bin에서 매도할 때 받을 수 있는 수익
+     */
+    function calculateBinSellCost(
+        uint256 marketId,
+        int256 binIndex,
+        uint256 amount
+    )
+        external
+        view
+        returns (uint256 sellRevenue)
+    {
+        // 1) 마켓 정보 가져오기
+        Market storage market = markets[marketId];
+        
+        // 2) 마켓 상태 검증
+        // 이미 closed된 마켓이라도 "이론적" 계산은 가능
+        require(market.active || market.closed, "Market is not active or closed");
+        
+        // 올바른 bin인지 확인
+        require(binIndex % int256(market.tickSpacing) == 0, "Bin index must be a multiple of tick spacing");
+        require(binIndex >= market.minTick && binIndex <= market.maxTick, "Bin index out of range");
+
+        // 3) bin 에 들어있는 토큰 q, 전체 T
+        uint256 qBin = market.q[binIndex];
+        uint256 Tcurrent = market.T;
+
+        // 4) RangeBetMath 이용해 수익 계산 (이 함수 내에서 추가 검증 수행)
+        sellRevenue = RangeBetMath.calculateSellCost(
+            amount, 
+            qBin, 
+            Tcurrent
+        );
+
+        return sellRevenue;
+    }
 } 
