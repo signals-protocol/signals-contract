@@ -47,13 +47,13 @@ export async function setupTestEnvironment() {
     initialCollateral
   );
 
-  // Transfer collateral to users
-  await collateralToken.transfer(user1.address, userCollateral);
-  await collateralToken.transfer(user2.address, userCollateral);
-  await collateralToken.transfer(user3.address, userCollateral);
+  // 사용자들이 직접 토큰을 요청
+  await collateralToken.connect(user1).requestTokens(userCollateral);
+  await collateralToken.connect(user2).requestTokens(userCollateral);
+  await collateralToken.connect(user3).requestTokens(userCollateral);
   // User4 gets very small amount for testing insufficient balance scenario
-  await collateralToken.transfer(user4.address, ethers.parseEther("1"));
-  await collateralToken.transfer(user5.address, userCollateral);
+  await collateralToken.connect(user4).requestTokens(ethers.parseEther("1"));
+  await collateralToken.connect(user5).requestTokens(userCollateral);
 
   // Deploy RangeBetMath library
   const RangeBetMathFactory = await ethers.getContractFactory("RangeBetMath");

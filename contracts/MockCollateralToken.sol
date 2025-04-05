@@ -11,6 +11,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract MockCollateralToken is ERC20, Ownable {
     uint8 private _decimals;
 
+    // Events
+    event TokensRequested(address indexed to, uint256 amount);
+
     /**
      * @dev Constructor that gives the msg.sender all of existing tokens.
      * @param name Token name
@@ -32,6 +35,15 @@ contract MockCollateralToken is ERC20, Ownable {
      */
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
+    }
+
+    /**
+     * @dev Allows anyone to request tokens for testing purposes.
+     * @param amount The amount of tokens to request
+     */
+    function requestTokens(uint256 amount) external {
+        _mint(msg.sender, amount);
+        emit TokensRequested(msg.sender, amount);
     }
 
     /**
