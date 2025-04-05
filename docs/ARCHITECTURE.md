@@ -52,6 +52,8 @@ struct Market {
     uint256 T;               // 시장 전체 토큰 공급량
     uint256 collateralBalance; // 담보 토큰 총액
     int256 winningBin;       // 승리 빈 (마켓 종료 후 설정)
+    uint256 openTimestamp;   // 마켓 생성 시점의 타임스탬프
+    uint256 closeTimestamp;  // 마켓 종료 예정 시간 (메타데이터로만 사용)
     mapping(int256 => uint256) q; // 각 빈별 토큰 수량
 }
 
@@ -74,12 +76,15 @@ uint256 public marketCount;
 function createMarket(
     uint256 tickSpacing,
     int256 minTick,
-    int256 maxTick
+    int256 maxTick,
+    uint256 _closeTime
 ) external onlyOwner returns (uint256 marketId)
 ```
 
 - Uniswap V3 스타일의 틱 간격과 범위로 새 예측 시장을 생성합니다.
 - `marketId`는 내부 카운터를 기반으로 증가합니다.
+- `_closeTime`은 마켓이 종료될 예정 시간으로, 메타데이터로만 사용됩니다.
+- 컨트랙트는 마켓 생성 시점의 타임스탬프(`openTimestamp`)를 자동으로 저장합니다.
 
 #### 2. 토큰 구매 (베팅)
 
@@ -171,7 +176,7 @@ function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uin
 1. **마켓 생성**:
 
    ```
-   Owner → RangeBetManager.createMarket() → Market Storage
+   Owner → RangeBetManager.createMarket(tickSpacing, minTick, maxTick, closeTime) → Market Storage (+ 타임스탬프 저장)
    ```
 
 2. **베팅(토큰 구매)**:

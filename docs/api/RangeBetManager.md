@@ -30,6 +30,8 @@ struct Market {
     uint256 T;                      // 시장 전체 토큰 공급량
     uint256 collateralBalance;      // 담보 토큰 총액
     int256 winningBin;              // 승리한 빈 (마켓 종료 후 설정)
+    uint256 openTimestamp;          // 마켓 생성 시점의 타임스탬프
+    uint256 closeTimestamp;         // 마켓 종료 예정 시간 (메타데이터로만 사용)
     mapping(int256 => uint256) q;   // 각 빈별 토큰 수량
 }
 ```
@@ -37,7 +39,7 @@ struct Market {
 ## 이벤트
 
 ```solidity
-event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick);
+event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick, uint256 openTimestamp, uint256 closeTimestamp);
 event TokensPurchased(uint256 indexed marketId, address indexed buyer, int256[] binIndices, uint256[] amounts, uint256 collateralAmount);
 event MarketClosed(uint256 indexed marketId, int256 winningBin);
 event RewardClaimed(uint256 indexed marketId, address indexed claimer, int256 binIndex, uint256 tokenAmount, uint256 rewardAmount);
@@ -63,7 +65,8 @@ constructor(address _rangeBetToken, address _collateralToken) Ownable()
 function createMarket(
     uint256 tickSpacing,
     int256 minTick,
-    int256 maxTick
+    int256 maxTick,
+    uint256 _closeTime
 ) external onlyOwner returns (uint256 marketId)
 ```
 
@@ -74,6 +77,7 @@ function createMarket(
 - `tickSpacing`: 틱 간격
 - `minTick`: 최소 틱 값
 - `maxTick`: 최대 틱 값
+- `_closeTime`: 마켓이 종료될 예정 시간 (메타데이터로만 사용)
 
 #### 반환값
 
@@ -88,7 +92,7 @@ function createMarket(
 
 #### 이벤트
 
-- `MarketCreated`: 마켓 생성 시 발생합니다.
+- `MarketCreated`: 마켓 생성 시 발생합니다. 이벤트에는 `openTimestamp`와 `closeTimestamp`가 포함됩니다.
 
 ### buyTokens
 
@@ -198,6 +202,42 @@ function withdrawAllCollateral(address to) external onlyOwner
 - `CollateralWithdrawn`: 담보 인출 시 발생합니다.
 
 ## View 함수
+
+### getMarketInfo
+
+```solidity
+function getMarketInfo(uint256 marketId) external view returns (
+    bool active,
+    bool closed,
+    uint256 tickSpacing,
+    int256 minTick,
+    int256 maxTick,
+    uint256 T,
+    uint256 collateralBalance,
+    int256 winningBin,
+    uint256 openTimestamp,
+    uint256 closeTimestamp
+)
+```
+
+특정 마켓의 정보를 반환합니다.
+
+#### 매개변수
+
+- `marketId`: 마켓 ID
+
+#### 반환값
+
+- `active`: 마켓 활성 상태
+- `closed`: 마켓 종료 여부
+- `tickSpacing`: 틱 간격
+- `minTick`: 최소 틱 값
+- `maxTick`: 최대 틱 값
+- `T`: 시장 전체 토큰 공급량
+- `collateralBalance`: 담보 토큰 총액
+- `winningBin`: 승리한 빈 (마켓 종료 후 설정)
+- `openTimestamp`: 마켓 생성 시점의 타임스탬프
+- `closeTimestamp`: 마켓 종료 예정 시간 (메타데이터)
 
 ### getBinQuantity
 
@@ -310,8 +350,11 @@ error TickNotDivisibleBySpacing();
 // 컨트랙트 인스턴스 가져오기
 RangeBetManager manager = RangeBetManager(managerAddress);
 
+// 종료 예정 시간 계산 (예: 1주일 후)
+uint256 closeTime = block.timestamp + 7 days;
+
 // 마켓 생성
-uint256 marketId = manager.createMarket(60, -360, 360);
+uint256 marketId = manager.createMarket(60, -360, 360, closeTime);
 ```
 
 ### 베팅

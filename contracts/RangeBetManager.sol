@@ -26,6 +26,8 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         uint256 T;               // Total supply of tokens in the market
         uint256 collateralBalance; // Total collateral balance in the market
         int256 winningBin;       // The winning bin (set when market is closed)
+        uint256 openTimestamp;   // Market creation (open) timestamp
+        uint256 closeTimestamp;  // Time when the market is scheduled to close (metadata)
         mapping(int256 => uint256) q; // Quantity of tokens in each bin
     }
 
@@ -36,7 +38,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     mapping(uint256 => Market) public markets;
 
     // Events
-    event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick);
+    event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick, uint256 openTimestamp, uint256 closeTimestamp);
     event TokensBought(uint256 indexed marketId, address indexed buyer, int256[] binIndices, uint256[] amounts, uint256 totalCost);
     event MarketClosed(uint256 indexed marketId, int256 winningBin);
     event RewardClaimed(uint256 indexed marketId, address indexed claimer, int256 binIndex, uint256 amount);
@@ -58,12 +60,14 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
      * @param tickSpacing The spacing between consecutive bins
      * @param minTick The minimum tick value (inclusive)
      * @param maxTick The maximum tick value (inclusive)
+     * @param _closeTime The scheduled time when the market will close (metadata)
      * @return marketId The ID of the newly created market
      */
     function createMarket(
         uint256 tickSpacing,
         int256 minTick,
-        int256 maxTick
+        int256 maxTick,
+        uint256 _closeTime
     ) external onlyOwner returns (uint256 marketId) {
         require(tickSpacing > 0, "Tick spacing must be positive");
         require(minTick % int256(tickSpacing) == 0, "Min tick must be a multiple of tick spacing");
@@ -84,8 +88,10 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         market.T = 0;
         market.collateralBalance = 0;
         market.winningBin = 0;
+        market.openTimestamp = block.timestamp;  
+        market.closeTimestamp = _closeTime;       
         
-        emit MarketCreated(marketId, tickSpacing, minTick, maxTick);
+        emit MarketCreated(marketId, tickSpacing, minTick, maxTick, market.openTimestamp, market.closeTimestamp);
     }
 
     /**
@@ -234,6 +240,8 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
      * @return T The total supply of tokens in the market
      * @return collateralBalance The total collateral balance in the market
      * @return winningBin The winning bin (0 if not set)
+     * @return openTimestamp The timestamp when the market was created
+     * @return closeTimestamp The scheduled time when the market will close
      */
     function getMarketInfo(uint256 marketId) external view returns (
         bool active,
@@ -243,7 +251,9 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         int256 maxTick,
         uint256 T,
         uint256 collateralBalance,
-        int256 winningBin
+        int256 winningBin,
+        uint256 openTimestamp,
+        uint256 closeTimestamp
     ) {
         Market storage market = markets[marketId];
         return (
@@ -254,7 +264,9 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
             market.maxTick,
             market.T,
             market.collateralBalance,
-            market.winningBin
+            market.winningBin,
+            market.openTimestamp,
+            market.closeTimestamp
         );
     }
 

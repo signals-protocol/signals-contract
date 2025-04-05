@@ -27,6 +27,8 @@ export async function setupTestEnvironment() {
   const minTick = -360;
   const maxTick = 360;
   let marketId: bigint;
+  // 예상 마켓 종료 시간: 현재 시간 + 7일
+  const closeTime = BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60);
 
   // Initial collateral amounts
   const initialCollateral = ethers.parseEther("1000000");
@@ -81,7 +83,12 @@ export async function setupTestEnvironment() {
   );
 
   // Create a test market
-  const tx = await rangeBetManager.createMarket(tickSpacing, minTick, maxTick);
+  const tx = await rangeBetManager.createMarket(
+    tickSpacing,
+    minTick,
+    maxTick,
+    closeTime
+  );
   const receipt = await tx.wait();
 
   // Get marketId from event
@@ -124,6 +131,7 @@ export async function setupTestEnvironment() {
     tickSpacing,
     minTick,
     maxTick,
+    closeTime,
     initialCollateral,
     userCollateral,
   };
