@@ -1,21 +1,21 @@
 import { ethers, network } from "hardhat";
 import * as dotenv from "dotenv";
 
-// .env 파일 로드
+// Load .env file
 dotenv.config();
 
 async function main() {
   console.log("Creating multiple markets...");
   console.log("Network:", network.name);
 
-  // 네트워크에 따라 RangeBetManager 주소 설정
+  // Set RangeBetManager address according to network
   let rangeBetManagerAddress = "";
 
   if (network.name === "localhost") {
-    // 로컬 배포 주소 (배포 스크립트 출력에서 가져온 값)
+    // Local deployment address (value from deployment script output)
     rangeBetManagerAddress = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
   } else if (network.name === "rskTestnet") {
-    // RSK 테스트넷의 경우 환경 변수 사용
+    // For RSK Testnet, use environment variables
     rangeBetManagerAddress = process.env.RSK_RANGE_BET_MANAGER || "";
 
     if (!rangeBetManagerAddress) {
@@ -23,7 +23,7 @@ async function main() {
       process.exit(1);
     }
   } else {
-    // 다른 네트워크의 경우 환경 변수가 있는지 확인
+    // For other networks, check if environment variables exist
     console.error(
       `RangeBetManager address for network '${network.name}' is not configured`
     );
@@ -38,25 +38,25 @@ async function main() {
     rangeBetManagerAddress
   );
 
-  // 샘플 마켓과 동일한 파라미터 설정
+  // Set parameters same as sample market
   const tickSpacing = 60;
   const minTick = -360;
   const maxTick = 120000;
 
-  // 현재 시간 기준
+  // Based on current time
   const now = Math.floor(Date.now() / 1000);
-  const oneDay = 24 * 60 * 60; // 하루(초 단위)
+  const oneDay = 24 * 60 * 60; // One day (in seconds)
 
-  // 앞으로 15일, 뒤로 15일 = 총 31개 마켓 (현재 포함)
+  // 15 days forward, 15 days backward = 31 markets total (including current)
   const daysBack = 15;
   const daysFuture = 15;
 
-  // 결과를 저장할 배열
+  // Array to store results
   const createdMarkets = [];
 
   console.log("\n--- Creating markets ---");
 
-  // 과거 마켓 생성 (이미 종료된 마켓들)
+  // Create past markets (already closed markets)
   for (let i = daysBack; i > 0; i--) {
     const closeTime = now - i * oneDay;
     console.log(`Creating market ${daysBack - i + 1}/30 (${i} days ago):`);
@@ -75,7 +75,7 @@ async function main() {
       );
       await tx.wait();
 
-      // 생성된 마켓 ID는 마켓의 총 개수 - 1
+      // Created market ID is total number of markets - 1
       const marketId = Number(await rangeBetManager.marketCount()) - 1;
       createdMarkets.push({
         marketId,
@@ -89,9 +89,9 @@ async function main() {
     }
   }
 
-  // 미래 마켓 생성
+  // Create future markets
   for (let i = 1; i <= daysFuture; i++) {
-    const closeTime = now + (7 + i) * oneDay; // 일주일 + i일 후 종료
+    const closeTime = now + (7 + i) * oneDay; // Closes after a week + i days
     console.log(
       `\nCreating market ${daysBack + 1 + i}/30 (${i} days in future):`
     );
@@ -123,7 +123,7 @@ async function main() {
     }
   }
 
-  // 결과 요약 출력
+  // Print summary of results
   console.log("\n--- Summary of created markets ---");
   console.log(`Total markets created: ${createdMarkets.length}`);
   createdMarkets.forEach((market, index) => {

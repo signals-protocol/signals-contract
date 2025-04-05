@@ -1,22 +1,22 @@
-# MockCollateralToken API 문서
+# MockCollateralToken API Documentation
 
-`MockCollateralToken` 컨트랙트는 테스트 목적으로 사용되는 간단한 ERC20 토큰입니다. RangeBet 시스템에서 담보 토큰으로 사용됩니다.
+The `MockCollateralToken` contract is a simple ERC20 token used for testing purposes. It serves as the collateral token in the RangeBet system.
 
-## 상태 변수
+## State Variables
 
 ```solidity
 uint8 private _decimals;
 ```
 
-- `_decimals`: 토큰의 소수점 자릿수 (기본값: 18)
+- `_decimals`: Number of decimal places for the token (default: 18)
 
-## 이벤트
+## Events
 
 ```solidity
 event TokensRequested(address indexed to, uint256 amount);
 ```
 
-## 생성자
+## Constructor
 
 ```solidity
 constructor(string memory name, string memory symbol, uint256 initialSupply)
@@ -24,13 +24,13 @@ constructor(string memory name, string memory symbol, uint256 initialSupply)
     Ownable(msg.sender)
 ```
 
-### 매개변수
+### Parameters
 
-- `name`: 토큰 이름
-- `symbol`: 토큰 심볼
-- `initialSupply`: 초기 토큰 공급량 (모두 생성자 호출자에게 할당됨)
+- `name`: Token name
+- `symbol`: Token symbol
+- `initialSupply`: Initial token supply (all allocated to the constructor caller)
 
-## 함수
+## Functions
 
 ### mint
 
@@ -38,16 +38,16 @@ constructor(string memory name, string memory symbol, uint256 initialSupply)
 function mint(address to, uint256 amount) external onlyOwner
 ```
 
-새로운 토큰을 발행합니다.
+Mints new tokens.
 
-#### 매개변수
+#### Parameters
 
-- `to`: 토큰을 받을 주소
-- `amount`: 발행할 토큰 양
+- `to`: Address to receive the tokens
+- `amount`: Amount of tokens to mint
 
-#### 조건
+#### Conditions
 
-- 호출자가 컨트랙트 소유자여야 합니다.
+- The caller must be the contract owner.
 
 ### requestTokens
 
@@ -55,15 +55,15 @@ function mint(address to, uint256 amount) external onlyOwner
 function requestTokens(uint256 amount) external
 ```
 
-테스트 목적으로 누구나 토큰을 요청할 수 있는 함수입니다.
+Function allowing anyone to request tokens for testing purposes.
 
-#### 매개변수
+#### Parameters
 
-- `amount`: 요청할 토큰 양
+- `amount`: Amount of tokens to request
 
-#### 이벤트
+#### Events
 
-- `TokensRequested`: 토큰 요청 시 발생합니다.
+- `TokensRequested`: Emitted when tokens are requested.
 
 ### decimals
 
@@ -71,37 +71,37 @@ function requestTokens(uint256 amount) external
 function decimals() public view override returns (uint8)
 ```
 
-토큰의 소수점 자릿수를 반환합니다.
+Returns the number of decimal places for the token.
 
-#### 반환값
+#### Return Value
 
-- 토큰의 소수점 자릿수 (18)
+- Number of decimal places (18)
 
-## 사용 예시
+## Usage Examples
 
-### 토큰 배포
+### Token Deployment
 
 ```solidity
-// 컨트랙트 배포
+// Deploy contract
 MockCollateralToken token = new MockCollateralToken("Test Token", "TST", 1000000 * 10**18);
 ```
 
-### 토큰 발행 (민팅)
+### Token Minting
 
 ```solidity
-// 컨트랙트 인스턴스 가져오기
+// Get contract instance
 MockCollateralToken token = MockCollateralToken(tokenAddress);
 
-// 토큰 발행 (소유자만 가능)
+// Mint tokens (owner only)
 token.mint(recipientAddress, 1000 * 10**18);
 ```
 
-### 테스트용 토큰 요청
+### Requesting Test Tokens
 
 ```solidity
-// 컨트랙트 인스턴스 가져오기
+// Get contract instance
 MockCollateralToken token = MockCollateralToken(tokenAddress);
 
-// 토큰 요청 (누구나 가능)
+// Request tokens (anyone can do this)
 token.requestTokens(5000 * 10**18);
 ```

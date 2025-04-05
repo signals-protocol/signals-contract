@@ -1,41 +1,41 @@
-# RangeBetMath API 문서
+# RangeBetMath API Documentation
 
-`RangeBetMath` 라이브러리는 RangeBet 시스템의 토큰 구매 비용 계산을 담당하는 수학 라이브러리입니다. 이 라이브러리는 PRBMath 라이브러리를 사용하여 고정 소수점 수학 연산을 구현합니다.
+The `RangeBetMath` library is a mathematical library responsible for calculating token purchase costs in the RangeBet system. This library implements fixed-point mathematical operations using the PRBMath library.
 
-## 개요
+## Overview
 
-RangeBetMath는 (q+t)/(T+t) 적분을 기반으로 한 비용 계산 공식을 구현합니다. 이 공식은 마켓의 현재 상태와 구매하려는 토큰 수량을 고려하여 사용자가 지불해야 할 담보 토큰의 양을 계산합니다.
+RangeBetMath implements a cost calculation formula based on the (q+t)/(T+t) integral. This formula calculates the amount of collateral tokens a user must pay, considering the current market state and the quantity of tokens they want to purchase.
 
-## 의존성
+## Dependencies
 
 ```solidity
 import { UD60x18, ud, unwrap } from "@prb/math/src/UD60x18.sol";
 ```
 
-- PRBMath: 고정 소수점 수학 연산을 위한 라이브러리
+- PRBMath: Library for fixed-point mathematical operations
 
-## 수학적 기초
+## Mathematical Foundation
 
-### 기본 공식
+### Basic Formula
 
-사용자가 특정 빈에 `x` 만큼의 토큰을 구매하려고 할 때, 비용은 다음 적분으로 계산됩니다:
+When a user wants to purchase `x` amount of tokens for a specific bin, the cost is calculated with the following integral:
 
 ![Cost = \int_{0}^{x} \frac{q + t}{T + t} dt](https://latex.codecogs.com/png.latex?Cost%20%3D%20%5Cint_%7B0%7D%5E%7Bx%7D%20%5Cfrac%7Bq%20%2B%20t%7D%7BT%20%2B%20t%7D%20dt)
 
-### 최종 공식
+### Final Formula
 
-적분을 풀면 다음과 같은 공식이 도출됩니다:
+Solving the integral yields the following formula:
 
 ![Cost = x + (q - T) \ln\frac{T + x}{T}](https://latex.codecogs.com/png.latex?Cost%20%3D%20x%20%2B%20%28q%20-%20T%29%20%5Cln%5Cfrac%7BT%20%2B%20x%7D%7BT%7D)
 
-여기서:
+Where:
 
-- `x`: 구매하려는 토큰 수량
-- `q`: 현재 해당 빈의 토큰 수량
-- `T`: 시장 전체 토큰 공급량
-- `ln`: 자연 로그 함수
+- `x`: Token quantity to purchase
+- `q`: Current token quantity in the bin
+- `T`: Total token supply for the market
+- `ln`: Natural logarithm function
 
-## 함수
+## Functions
 
 ### calculateCost
 
@@ -47,55 +47,55 @@ function calculateCost(
 ) public pure returns (uint256)
 ```
 
-지정된 매개변수를 기반으로 토큰 구매 비용을 계산합니다.
+Calculates the token purchase cost based on the specified parameters.
 
-#### 매개변수
+#### Parameters
 
-- `x`: 구매하려는 토큰 수량
-- `q`: 현재 빈의 토큰 수량
-- `T`: 시장 전체 토큰 공급량
+- `x`: Token quantity to purchase
+- `q`: Current token quantity in the bin
+- `T`: Total token supply for the market
 
-#### 반환값
+#### Return Value
 
-- 계산된 담보 토큰 비용
+- Calculated collateral token cost
 
-#### 특수 케이스
+#### Special Cases
 
-- `q == T`인 경우, 비용은 정확히 `x`가 됩니다.
-- `q > T`인 경우, 비용은 `x`보다 큽니다 (프리미엄).
-- `q < T`인 경우, 비용은 `x`보다 작습니다 (할인).
+- If `q == T`, the cost is exactly `x`.
+- If `q > T`, the cost is greater than `x` (premium).
+- If `q < T`, the cost is less than `x` (discount).
 
-#### 구현 세부 사항
+#### Implementation Details
 
 ```solidity
 function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uint256) {
     if (x == 0) return 0;
-    if (T == 0) return x; // 특수 케이스: 시장의 첫 번째 베팅
+    if (T == 0) return x; // Special case: first bet in the market
 
-    // UD60x18로 변환
+    // Convert to UD60x18
     UD60x18 xUD = ud(x);
     UD60x18 qUD = ud(q);
     UD60x18 TUD = ud(T);
 
-    // 첫 번째 항: x
+    // First term: x
     UD60x18 cost = xUD;
 
-    // 두 번째 항: (q-T)*ln((T+x)/T)
-    if (q != T) { // q == T이면 이 부분은 0이 됨
-        // (T+x)/T 계산
+    // Second term: (q-T)*ln((T+x)/T)
+    if (q != T) { // If q == T, this part becomes 0
+        // Calculate (T+x)/T
         UD60x18 ratio = (TUD + xUD) / TUD;
-        // ln((T+x)/T) 계산
+        // Calculate ln((T+x)/T)
         UD60x18 logTerm = ratio.ln();
 
-        // (q-T) 계산
+        // Calculate (q-T)
         if (q > T) {
-            // q > T이면, (q-T)*ln((T+x)/T) 더함
+            // If q > T, add (q-T)*ln((T+x)/T)
             UD60x18 qMinusT = qUD - TUD;
             cost = cost + (qMinusT * logTerm);
         } else {
-            // q < T이면, (T-q)*ln((T+x)/T) 뺌
+            // If q < T, subtract (T-q)*ln((T+x)/T)
             UD60x18 TMinusq = TUD - qUD;
-            // 언더플로우 방지
+            // Prevent underflow
             if ((TMinusq * logTerm) > cost) {
                 return 0;
             }
@@ -103,21 +103,21 @@ function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uin
         }
     }
 
-    // uint256으로 변환
+    // Convert to uint256
     return unwrap(cost);
 }
 ```
 
-## 사용 예시
+## Usage Examples
 
-### RangeBetManager에서의 사용
+### Usage in RangeBetManager
 
 ```solidity
-// RangeBetManager 컨트랙트 내부
+// Inside RangeBetManager contract
 import "./RangeBetMath.sol";
 
 contract RangeBetManager {
-    // RangeBetMath 라이브러리 사용 설정
+    // Set up RangeBetMath library usage
 
     // ...
 
@@ -126,7 +126,7 @@ contract RangeBetManager {
         uint256 binQuantity,
         uint256 totalSupply
     ) internal view returns (uint256) {
-        // RangeBetMath 라이브러리를 사용하여 비용 계산
+        // Calculate cost using RangeBetMath library
         return RangeBetMath.calculateCost(amount, binQuantity, totalSupply);
     }
 
@@ -134,20 +134,20 @@ contract RangeBetManager {
 }
 ```
 
-### 독립적인 사용
+### Independent Usage
 
 ```solidity
-// 별도의 컨트랙트나 스크립트에서
+// In a separate contract or script
 import "./RangeBetMath.sol";
 
 contract ExampleContract {
-    // RangeBetMath 사용 예시
+    // Example of using RangeBetMath
     function calculateExampleCost() public pure returns (uint256) {
-        uint256 tokensToBuy = 100 * 10**18;  // 100 토큰
-        uint256 currentBinQuantity = 500 * 10**18;  // 현재 빈에 500 토큰
-        uint256 marketTotalSupply = 1000 * 10**18;  // 시장 전체 1000 토큰
+        uint256 tokensToBuy = 100 * 10**18;  // 100 tokens
+        uint256 currentBinQuantity = 500 * 10**18;  // 500 tokens currently in the bin
+        uint256 marketTotalSupply = 1000 * 10**18;  // 1000 tokens total in the market
 
-        // 비용 계산
+        // Calculate cost
         return RangeBetMath.calculateCost(
             tokensToBuy,
             currentBinQuantity,
@@ -157,35 +157,35 @@ contract ExampleContract {
 }
 ```
 
-## 성능 고려사항
+## Performance Considerations
 
-### 가스 최적화
+### Gas Optimization
 
-RangeBetMath 라이브러리는 복잡한 수학 연산을 포함하므로 가스 비용이 상당할 수 있습니다. 다음과 같은 최적화가 적용되었습니다:
+The RangeBetMath library includes complex mathematical operations, so the gas cost can be substantial. The following optimizations have been applied:
 
-1. 특수 케이스 조기 처리 (`q = T`, `x = 0`, `T = 0`)
-2. 부분 연산 결과 저장하여 재사용
-3. PRBMath의 최적화된 고정 소수점 연산 사용
+1. Early handling of special cases (`q = T`, `x = 0`, `T = 0`)
+2. Storing and reusing partial calculation results
+3. Using PRBMath's optimized fixed-point operations
 
-### 권장 사용법
+### Recommended Usage
 
-- 온체인 계산의 가스 비용을 절약하기 위해, 가능하면 오프체인에서 비용을 미리 계산하고 검증용으로만 온체인 계산을 사용하는 것이 좋습니다.
-- 큰 숫자를 다룰 때는 오버플로우를 방지하기 위해 충분한 테스트를 수행하세요.
+- To save gas costs for on-chain calculations, it's recommended to pre-calculate costs off-chain when possible and use on-chain calculations only for verification.
+- When dealing with large numbers, perform sufficient testing to prevent overflow.
 
-## 제한사항
+## Limitations
 
-- PRBMath 라이브러리의 정밀도 한계로 인해, 극단적인 값에서는 근사치가 반환될 수 있습니다.
-- 매우 큰 토큰 수량 (> 1e27)은 오버플로우를 일으킬 수 있으므로, 가능한 합리적인 범위 내에서 사용하는 것이 좋습니다.
+- Due to precision limitations in the PRBMath library, approximate values may be returned for extreme values.
+- Very large token quantities (> 1e27) may cause overflow, so it's recommended to use within a reasonable range.
 
-## 모의 계산 예시
+## Sample Calculations
 
-| 구매량 (x) | 빈 수량 (q) | 시장 총량 (T) | 계산된 비용 | 비율 (비용/x) |
-| ---------- | ----------- | ------------- | ----------- | ------------- |
-| 10         | 0           | 100           | 9.05        | 0.905         |
-| 10         | 50          | 100           | 9.53        | 0.953         |
-| 10         | 100         | 100           | 10.00       | 1.000         |
-| 10         | 200         | 100           | 10.95       | 1.095         |
-| 100        | 0           | 1000          | 90.5        | 0.905         |
-| 100        | 500         | 1000          | 95.3        | 0.953         |
-| 100        | 1000        | 1000          | 100.0       | 1.000         |
-| 100        | 2000        | 1000          | 109.3       | 1.093         |
+| Purchase Amount (x) | Bin Quantity (q) | Market Total (T) | Calculated Cost | Ratio (Cost/x) |
+| ------------------- | ---------------- | ---------------- | --------------- | -------------- |
+| 10                  | 0                | 100              | 9.05            | 0.905          |
+| 10                  | 50               | 100              | 9.53            | 0.953          |
+| 10                  | 100              | 100              | 10.00           | 1.000          |
+| 10                  | 200              | 100              | 10.95           | 1.095          |
+| 100                 | 0                | 1000             | 90.5            | 0.905          |
+| 100                 | 500              | 1000             | 95.3            | 0.953          |
+| 100                 | 1000             | 1000             | 100.0           | 1.000          |
+| 100                 | 2000             | 1000             | 109.3           | 1.093          |

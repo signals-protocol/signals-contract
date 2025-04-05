@@ -74,7 +74,7 @@ describe("Market Close", function () {
     ).to.be.revertedWith("Winning bin out of range");
   });
 
-  // 추가 테스트: 비활성(active=false)이지만 아직 closed=false인 마켓을 닫으려 할 때
+  // Additional test: Attempt to close a market that is inactive (active=false) but not yet closed (closed=false)
   it("Should not allow closing an inactive market", async function () {
     // Deactivate the market
     await env.rangeBetManager.deactivateMarket(env.marketId);
@@ -85,7 +85,7 @@ describe("Market Close", function () {
     ).to.be.revertedWith("Market is not active");
   });
 
-  // 추가 테스트: 이미 closed=true인 마켓을 또 닫으려 할 때
+  // Additional test: Attempt to close a market that is already closed (closed=true)
   it("Should not allow closing an already closed market", async function () {
     // Close the market first time
     await env.rangeBetManager.closeMarket(env.marketId, 0);

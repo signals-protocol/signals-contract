@@ -1,10 +1,10 @@
-# RangeBet 아키텍처 문서
+# RangeBet Architecture Document
 
-이 문서는 RangeBet 시스템의 핵심 아키텍처와 컴포넌트를 설명합니다.
+This document explains the core architecture and components of the RangeBet system.
 
-## 시스템 아키텍처 개요
+## System Architecture Overview
 
-RangeBet은 다음 주요 컴포넌트로 구성됩니다:
+RangeBet consists of the following main components:
 
 ```
                  ┌─────────────┐
@@ -13,20 +13,20 @@ RangeBet은 다음 주요 컴포넌트로 구성됩니다:
                  │   Library   │     │
                  │             │     │
                  └─────────────┘     │
-                                     │ 호출
+                                     │ Call
                                      │
 ┌─────────────┐      ┌──────────▼───────┐      ┌─────────────┐
-│             │ 생성  │                  │  배포/│             │
+│             │ Create│                  │Deploy/│             │
 │  Market 1   │◄─────┤                  ├─────►│             │
-│             │      │                  │ 관리  │             │
+│             │      │                  │Manage │             │
 └─────────────┘      │ RangeBetManager  │      │RangeBetToken│
                      │                  │      │  (ERC1155)  │
-┌─────────────┐ 관리  │                  │      │             │
+┌─────────────┐ Manage│                  │      │             │
 │             │◄─────┤                  │      │             │
 │  Market 2   │      │                  │      │             │
 │             │      └──────────▲───────┘      └─────────────┘
 └─────────────┘                 │
-                                │ 전송
+                                │ Transfer
 ┌─────────────┐                 │
 │             │       ┌─────────┴──────┐
 │  Market N   │       │                │
@@ -36,44 +36,44 @@ RangeBet은 다음 주요 컴포넌트로 구성됩니다:
                       └────────────────┘
 ```
 
-### 컨트랙트 설명
+### Contract Description
 
 ## 1. RangeBetManager
 
-중앙 관리 컨트랙트로서 모든 예측 마켓을 생성하고 관리합니다.
+Central management contract that creates and manages all prediction markets.
 
-### 주요 상태 변수
+### Main State Variables
 
 ```solidity
-// 마켓 구조체
+// Market struct
 struct Market {
-    bool active;             // 마켓 활성 상태
-    bool closed;             // 마켓 종료 여부
-    uint256 tickSpacing;     // 틱 간격 (e.g., 60)
-    int256 minTick;          // 최소 틱 (e.g., -360)
-    int256 maxTick;          // 최대 틱 (e.g., 360)
-    uint256 T;               // 시장 전체 토큰 공급량
-    uint256 collateralBalance; // 담보 토큰 총액
-    int256 winningBin;       // 승리 빈 (마켓 종료 후 설정)
-    uint256 openTimestamp;   // 마켓 생성 시점의 타임스탬프
-    uint256 closeTimestamp;  // 마켓 종료 예정 시간 (메타데이터로만 사용)
-    mapping(int256 => uint256) q; // 각 빈별 토큰 수량
+    bool active;             // Market active status
+    bool closed;             // Market closed status
+    uint256 tickSpacing;     // Tick spacing (e.g., 60)
+    int256 minTick;          // Minimum tick (e.g., -360)
+    int256 maxTick;          // Maximum tick (e.g., 360)
+    uint256 T;               // Total token supply in the market
+    uint256 collateralBalance; // Total collateral tokens
+    int256 winningBin;       // Winning bin (set after market closes)
+    uint256 openTimestamp;   // Timestamp when market was created
+    uint256 closeTimestamp;  // Market scheduled close time (used only as metadata)
+    mapping(int256 => uint256) q; // Token quantity for each bin
 }
 
-// 마켓 매핑
+// Market mapping
 mapping(uint256 => Market) public markets;
 
-// 토큰 컨트랙트 참조
+// Token contract references
 RangeBetToken public rangeBetToken;
 IERC20 public collateralToken;
 
-// 마켓 카운터
+// Market counter
 uint256 public marketCount;
 ```
 
-### 주요 함수
+### Main Functions
 
-#### 1. 마켓 생성
+#### 1. Market Creation
 
 ```solidity
 function createMarket(
@@ -84,12 +84,12 @@ function createMarket(
 ) external onlyOwner returns (uint256 marketId)
 ```
 
-- Uniswap V3 스타일의 틱 간격과 범위로 새 예측 시장을 생성합니다.
-- `marketId`는 내부 카운터를 기반으로 증가합니다.
-- `_closeTime`은 마켓이 종료될 예정 시간으로, 메타데이터로만 사용됩니다.
-- 컨트랙트는 마켓 생성 시점의 타임스탬프(`openTimestamp`)를 자동으로 저장합니다.
+- Creates a new prediction market with Uniswap V3 style tick spacing and range.
+- `marketId` increases based on internal counter.
+- `_closeTime` is the scheduled time when the market will close, used only as metadata.
+- The contract automatically stores the timestamp when the market is created (`openTimestamp`).
 
-#### 2. 토큰 구매 (베팅)
+#### 2. Token Purchase (Betting)
 
 ```solidity
 function buyTokens(
@@ -100,143 +100,143 @@ function buyTokens(
 ) external nonReentrant
 ```
 
-- 사용자가 여러 빈에 동시에 베팅할 수 있게 합니다.
-- (q+t)/(T+t) 적분 공식을 사용하여 비용을 계산합니다.
-- ERC1155 토큰을 발행하고 담보 토큰을 전송합니다.
+- Allows users to bet on multiple bins simultaneously.
+- Uses the (q+t)/(T+t) integral formula to calculate costs.
+- Issues ERC1155 tokens and transfers collateral tokens.
 
-#### 3. 마켓 종료
+#### 3. Market Close
 
 ```solidity
 function closeMarket(uint256 marketId, int256 winningBin) external onlyOwner
 ```
 
-- 마켓을 종료하고 승리 빈을 설정합니다.
-- 이후 해당 마켓에 대한 새로운 베팅은 불가능합니다.
+- Closes the market and sets the winning bin.
+- New bets on that market are no longer possible afterward.
 
-#### 4. 보상 청구
+#### 4. Reward Claim
 
 ```solidity
 function claimReward(uint256 marketId, int256 binIndex) external nonReentrant
 ```
 
-- 승리 빈의 토큰 보유자가 보상을 청구합니다.
-- 토큰은 소각되고 사용자는 보유 비율에 따라 담보 토큰을 받습니다.
+- Token holders of the winning bin claim their rewards.
+- Tokens are burned and users receive collateral tokens based on their holding ratio.
 
 ## 2. RangeBetToken (ERC1155)
 
-모든 마켓과 빈에 대한 토큰을 관리하는 ERC1155 토큰 컨트랙트입니다. RangeBetManager에 의해 배포되고 관리됩니다.
+An ERC1155 token contract that manages tokens for all markets and bins. Deployed and managed by RangeBetManager.
 
-### 토큰 ID 인코딩
+### Token ID Encoding
 
 ```solidity
 function encodeTokenId(uint256 marketId, int256 binIndex) public pure returns (uint256)
 ```
 
-- `marketId`와 `binIndex`를 단일 `uint256` 토큰 ID로 인코딩합니다.
+- Encodes `marketId` and `binIndex` into a single `uint256` token ID.
 - `tokenId = (marketId << 128) + (binIndex + OFFSET)`
-- `OFFSET`은 음수 빈 인덱스를 처리하기 위해 사용됩니다.
+- `OFFSET` is used to handle negative bin indices.
 
-### 토큰 ID 디코딩
+### Token ID Decoding
 
 ```solidity
 function decodeTokenId(uint256 tokenId) public pure returns (uint256 marketId, int256 binIndex)
 ```
 
-- 토큰 ID에서 원래의 `marketId`와 `binIndex`를 추출합니다.
+- Extracts the original `marketId` and `binIndex` from the token ID.
 
 ## 3. RangeBetMath
 
-베팅 비용 계산을 위한 적분 공식 구현을 담당하는 라이브러리입니다.
+A library responsible for implementing the integral formula for calculating betting costs.
 
-### 비용 계산 함수
+### Cost Calculation Function
 
 ```solidity
 function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uint256)
 ```
 
-- (q+t)/(T+t) 적분 공식을 계산합니다: `x + (q-T)*ln((T+x)/T)`
-- `x`: 구매하려는 토큰 양
-- `q`: 현재 빈의 토큰 양
-- `T`: 시장 전체 토큰 공급량
+- Calculates the (q+t)/(T+t) integral formula: `x + (q-T)*ln((T+x)/T)`
+- `x`: Amount of tokens to purchase
+- `q`: Current token amount in the bin
+- `T`: Total token supply in the market
 
-## 모듈 간 상호작용
+## Module Interactions
 
 1. **RangeBetManager ↔ RangeBetMath**:
 
-   - 베팅 비용 계산을 위해 Manager는 Math 라이브러리를 호출합니다.
+   - Manager calls the Math library to calculate betting costs.
 
 2. **RangeBetManager ↔ RangeBetToken**:
 
-   - RangeBetManager는 생성자에서 RangeBetToken을 배포합니다.
-   - 베팅 시 Manager는 사용자를 위한 토큰을 발행합니다.
-   - 보상 청구 시 Manager는 토큰을 소각합니다.
+   - RangeBetManager deploys RangeBetToken in its constructor.
+   - During betting, Manager mints tokens for the user.
+   - During reward claiming, Manager burns tokens.
 
 3. **RangeBetManager ↔ CollateralToken**:
-   - 베팅 시 담보 토큰은 사용자로부터 Manager로 전송됩니다.
-   - 보상 청구 시 담보 토큰은 Manager에서 사용자로 전송됩니다.
+   - During betting, collateral tokens are transferred from user to Manager.
+   - During reward claiming, collateral tokens are transferred from Manager to user.
 
-## 데이터 흐름
+## Data Flow
 
-1. **마켓 생성**:
+1. **Market Creation**:
 
    ```
-   Owner → RangeBetManager.createMarket(tickSpacing, minTick, maxTick, closeTime) → Market Storage (+ 타임스탬프 저장)
+   Owner → RangeBetManager.createMarket(tickSpacing, minTick, maxTick, closeTime) → Market Storage (+ timestamp storage)
    ```
 
-2. **베팅(토큰 구매)**:
+2. **Betting (Token Purchase)**:
 
    ```
    User → RangeBetManager.buyTokens() → RangeBetMath.calculateCost() → RangeBetToken.mint() → CollateralToken.transferFrom()
    ```
 
-3. **마켓 종료**:
+3. **Market Closing**:
 
    ```
    Owner → RangeBetManager.closeMarket() → Market Storage (closed=true, winningBin=X)
    ```
 
-4. **보상 청구**:
+4. **Reward Claiming**:
    ```
    User → RangeBetManager.claimReward() → RangeBetToken.burn() → CollateralToken.transfer() → User
    ```
 
-## 보안 고려사항
+## Security Considerations
 
-1. **재진입 보호**:
+1. **Reentrancy Protection**:
 
-   - `buyTokens()`와 `claimReward()` 함수는 `nonReentrant` 수정자로 보호됩니다.
+   - `buyTokens()` and `claimReward()` functions are protected with the `nonReentrant` modifier.
 
-2. **액세스 제어**:
+2. **Access Control**:
 
-   - 마켓 생성 및 종료는 `onlyOwner`로 제한됩니다.
-   - 토큰 발행 및 소각은 `onlyManager`로 제한됩니다.
+   - Market creation and closing are restricted with `onlyOwner`.
+   - Token minting and burning are restricted with `onlyManager`.
 
-3. **슬리피지 보호**:
+3. **Slippage Protection**:
 
-   - `maxCollateral` 매개변수로 사용자는 최대 지불 의향 금액을 지정할 수 있습니다.
+   - The `maxCollateral` parameter allows users to specify their maximum willing payment amount.
 
-4. **이중 청구 방지**:
-   - 토큰 소각 방식으로 사용자가 보상을 두 번 청구하는 것을 방지합니다.
+4. **Double Claim Prevention**:
+   - Token burning prevents users from claiming rewards twice.
 
-## 가스 최적화
+## Gas Optimization
 
-1. 여러 빈에 대한 베팅을 단일 트랜잭션으로 처리
-2. 토큰 ID 인코딩/디코딩의 비트 연산 최적화
-3. 고정 소수점 수학 연산의 효율적 구현
+1. Process betting on multiple bins in a single transaction
+2. Optimize bit operations for token ID encoding/decoding
+3. Efficient implementation of fixed-point math operations
 
-## 확장성 고려사항
+## Scalability Considerations
 
-1. **다중 담보 토큰**:
+1. **Multiple Collateral Tokens**:
 
-   - 시스템은 마켓별로 다른 담보 토큰을 지원하도록 확장될 수 있습니다.
+   - The system can be extended to support different collateral tokens per market.
 
-2. **오라클 통합**:
+2. **Oracle Integration**:
 
-   - 외부 오라클을 통합하여 승리 빈을 자동으로 결정할 수 있습니다.
+   - External oracles can be integrated to automatically determine the winning bin.
 
-3. **거버넌스**:
+3. **Governance**:
 
-   - 관리자 권한을 DAO나 다중 서명 지갑으로 이전할 수 있습니다.
+   - Admin rights can be transferred to a DAO or multi-signature wallet.
 
-4. **프론트엔드 지원**:
-   - 토큰 메타데이터 URI 시스템이 각 마켓과 빈에 대한 풍부한 메타데이터를 제공할 수 있습니다.
+4. **Frontend Support**:
+   - The token metadata URI system can provide rich metadata for each market and bin.

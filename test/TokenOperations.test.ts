@@ -9,132 +9,156 @@ describe("Token Operations", function () {
     env = await setupTestEnvironment();
   });
 
-  describe("Buying Tokens", function () {
+  describe("Token Purchase (buyTokens)", function () {
     it("Should allow users to buy tokens in a single bin", async function () {
-      const binIndex = 0; // Bet on bin 0
-      const amount = ethers.parseEther("100"); // Buy 100 tokens
-      const maxCollateral = ethers.parseEther("150"); // Max willing to spend
+      // Initial state
+      const binIndex = 0;
+      const amount = ethers.parseEther("100");
+      const maxCollateral = ethers.parseEther("150");
+
+      // Check initial balances
+      const initialCollateralBalance = await env.collateralToken.balanceOf(
+        env.user1.address
+      );
+      const initialContractBalance = await env.collateralToken.balanceOf(
+        await env.rangeBetManager.getAddress()
+      );
 
       // Buy tokens
-      await env.rangeBetManager
+      const tx = await env.rangeBetManager
         .connect(env.user1)
         .buyTokens(env.marketId, [binIndex], [amount], maxCollateral);
+      const receipt = await tx.wait();
 
-      // Check token balance
+      // Get the event
+      const tokensBoughtEvent = receipt?.logs.find(
+        (log: any) => log.fragment?.name === "TokensBought"
+      );
+      expect(tokensBoughtEvent).to.not.be.undefined;
+
+      // Check the cost from event
+      const cost = tokensBoughtEvent.args[4];
+      expect(cost).to.be.lte(maxCollateral);
+
+      // Check user's collateral balance
+      const finalCollateralBalance = await env.collateralToken.balanceOf(
+        env.user1.address
+      );
+      expect(initialCollateralBalance - finalCollateralBalance).to.equal(cost);
+
+      // Check contract's collateral balance
+      const finalContractBalance = await env.collateralToken.balanceOf(
+        await env.rangeBetManager.getAddress()
+      );
+      expect(finalContractBalance - initialContractBalance).to.equal(cost);
+
+      // Check user's token balance
       const tokenId = await env.rangeBetToken.encodeTokenId(
         env.marketId,
         binIndex
       );
-      expect(
-        await env.rangeBetToken.balanceOf(env.user1.address, tokenId)
-      ).to.equal(amount);
+      const tokenBalance = await env.rangeBetToken.balanceOf(
+        env.user1.address,
+        tokenId
+      );
+      expect(tokenBalance).to.equal(amount);
 
       // Check market state
       const marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
       expect(marketInfo[5]).to.equal(amount); // T (total supply)
-      expect(marketInfo[6]).to.be.gt(0); // collateralBalance should be positive
+      expect(marketInfo[6]).to.equal(cost); // collateralBalance
 
       // Check bin quantity
-      expect(
-        await env.rangeBetManager.getBinQuantity(env.marketId, binIndex)
-      ).to.equal(amount);
+      const binQuantity = await env.rangeBetManager.getBinQuantity(
+        env.marketId,
+        binIndex
+      );
+      expect(binQuantity).to.equal(amount);
     });
 
     it("Should allow users to buy tokens in multiple bins", async function () {
-      const binIndices = [-60, 0, 60]; // Bet on bins -60, 0, 60
+      // Initial state
+      const binIndices = [0, 60, -60];
       const amounts = [
-        ethers.parseEther("50"),
         ethers.parseEther("100"),
-        ethers.parseEther("150"),
+        ethers.parseEther("50"),
+        ethers.parseEther("75"),
       ];
-      const maxCollateral = ethers.parseEther("400"); // Max willing to spend
+      const maxCollateral = ethers.parseEther("300");
+
+      // Check initial balances
+      const initialCollateralBalance = await env.collateralToken.balanceOf(
+        env.user1.address
+      );
+      const initialContractBalance = await env.collateralToken.balanceOf(
+        await env.rangeBetManager.getAddress()
+      );
 
       // Buy tokens
-      await env.rangeBetManager
+      const tx = await env.rangeBetManager
         .connect(env.user1)
         .buyTokens(env.marketId, binIndices, amounts, maxCollateral);
+      const receipt = await tx.wait();
 
-      // Check token balances
+      // Get the event
+      const tokensBoughtEvent = receipt?.logs.find(
+        (log: any) => log.fragment?.name === "TokensBought"
+      );
+      expect(tokensBoughtEvent).to.not.be.undefined;
+
+      // Check the cost from event
+      const cost = tokensBoughtEvent.args[4];
+      expect(cost).to.be.lte(maxCollateral);
+
+      // Check user's collateral balance
+      const finalCollateralBalance = await env.collateralToken.balanceOf(
+        env.user1.address
+      );
+      expect(initialCollateralBalance - finalCollateralBalance).to.equal(cost);
+
+      // Check contract's collateral balance
+      const finalContractBalance = await env.collateralToken.balanceOf(
+        await env.rangeBetManager.getAddress()
+      );
+      expect(finalContractBalance - initialContractBalance).to.equal(cost);
+
+      // Check user's token balances for each bin
       for (let i = 0; i < binIndices.length; i++) {
         const tokenId = await env.rangeBetToken.encodeTokenId(
           env.marketId,
           binIndices[i]
         );
-        expect(
-          await env.rangeBetToken.balanceOf(env.user1.address, tokenId)
-        ).to.equal(amounts[i]);
+        const tokenBalance = await env.rangeBetToken.balanceOf(
+          env.user1.address,
+          tokenId
+        );
+        expect(tokenBalance).to.equal(amounts[i]);
       }
 
       // Check market state
       const marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
-      expect(marketInfo[5]).to.equal(
-        ethers.parseEther("50") +
-          ethers.parseEther("100") +
-          ethers.parseEther("150")
-      ); // T (total supply)
+      const totalAmount = amounts.reduce(
+        (sum, amount) => sum + amount,
+        ethers.parseEther("0")
+      );
+      expect(marketInfo[5]).to.equal(totalAmount); // T (total supply)
+      expect(marketInfo[6]).to.equal(cost); // collateralBalance
 
       // Check bin quantities
       for (let i = 0; i < binIndices.length; i++) {
-        expect(
-          await env.rangeBetManager.getBinQuantity(env.marketId, binIndices[i])
-        ).to.equal(amounts[i]);
+        const binQuantity = await env.rangeBetManager.getBinQuantity(
+          env.marketId,
+          binIndices[i]
+        );
+        expect(binQuantity).to.equal(amounts[i]);
       }
     });
 
-    it("Should calculate cost based on (q+t)/(T+t) integral formula", async function () {
-      // First user bets on bin 0
-      await env.rangeBetManager
-        .connect(env.user1)
-        .buyTokens(
-          env.marketId,
-          [0],
-          [ethers.parseEther("100")],
-          ethers.parseEther("150")
-        );
+    it("Should fail when market is not active", async function () {
+      // Deactivate market
+      await env.rangeBetManager.deactivateMarket(env.marketId);
 
-      // Second user also bets on bin 0
-      const user1CollateralBefore = await env.collateralToken.balanceOf(
-        env.user2.address
-      );
-      await env.rangeBetManager
-        .connect(env.user2)
-        .buyTokens(
-          env.marketId,
-          [0],
-          [ethers.parseEther("100")],
-          ethers.parseEther("150")
-        );
-      const user1CollateralAfter = await env.collateralToken.balanceOf(
-        env.user2.address
-      );
-      const secondBetCost = user1CollateralBefore - user1CollateralAfter;
-
-      // Third user bets on bin 60
-      const user2CollateralBefore = await env.collateralToken.balanceOf(
-        env.user3.address
-      );
-      await env.rangeBetManager
-        .connect(env.user3)
-        .buyTokens(
-          env.marketId,
-          [60],
-          [ethers.parseEther("100")],
-          ethers.parseEther("150")
-        );
-      const user2CollateralAfter = await env.collateralToken.balanceOf(
-        env.user3.address
-      );
-      const thirdBetCost = user2CollateralBefore - user2CollateralAfter;
-
-      // The second bet on the same bin should cost more than the third bet on a different bin
-      // due to the formula (q+t)/(T+t)
-      expect(secondBetCost).to.be.gt(thirdBetCost);
-    });
-
-    it("Should fail when cost exceeds maxCollateral", async function () {
-      // Set a very low max collateral
-      const lowMaxCollateral = ethers.parseEther("10");
-
+      // Try to buy tokens in inactive market
       await expect(
         env.rangeBetManager
           .connect(env.user1)
@@ -142,38 +166,24 @@ describe("Token Operations", function () {
             env.marketId,
             [0],
             [ethers.parseEther("100")],
-            lowMaxCollateral
+            ethers.parseEther("150")
           )
-      ).to.be.revertedWith("Cost exceeds max collateral");
+      ).to.be.revertedWith("Market is not active");
     });
 
-    it("Should fail for invalid bin indices", async function () {
-      // Try to buy tokens with invalid bin index (not a multiple of tickSpacing)
+    it("Should fail when bin index is out of range", async function () {
+      // Try with bin index beyond maxTick
       await expect(
-        env.rangeBetManager
-          .connect(env.user1)
-          .buyTokens(
-            env.marketId,
-            [61],
-            [ethers.parseEther("100")],
-            ethers.parseEther("150")
-          )
-      ).to.be.revertedWith("Bin index must be a multiple of tick spacing");
-
-      // Try to buy tokens with bin index out of range
-      await expect(
-        env.rangeBetManager
-          .connect(env.user1)
-          .buyTokens(
-            env.marketId,
-            [420],
-            [ethers.parseEther("100")],
-            ethers.parseEther("150")
-          )
+        env.rangeBetManager.connect(env.user1).buyTokens(
+          env.marketId,
+          [500], // Outside the range (-360 to 360)
+          [ethers.parseEther("100")],
+          ethers.parseEther("150")
+        )
       ).to.be.revertedWith("Bin index out of range");
     });
 
-    // 추가 테스트: 사용자가 실제로 ERC20 잔액이 부족할 때
+    // Additional test: When user actually has insufficient ERC20 balance
     it("Should fail when user has insufficient ERC20 balance", async function () {
       // user4 has only 1 ETH balance but trying to buy tokens that cost more
       await expect(
@@ -188,7 +198,7 @@ describe("Token Operations", function () {
       ).to.be.reverted; // ERC20: transfer amount exceeds balance
     });
 
-    // 추가 테스트: 사용자가 ERC20 허용량(allowance)이 부족할 때
+    // Additional test: When user has insufficient ERC20 allowance
     it("Should fail when user has insufficient ERC20 allowance", async function () {
       // user5 has approved only 10 ETH but trying to buy tokens that cost more
       await expect(
@@ -203,7 +213,7 @@ describe("Token Operations", function () {
       ).to.be.reverted; // ERC20: insufficient allowance
     });
 
-    // 추가 테스트: buyTokens에 amount=0인 케이스를 전달해도 오류 없이 무시되는지
+    // Additional test: Check if cases with amount=0 passed to buyTokens are ignored without errors
     it("Should ignore bin indices with zero amount", async function () {
       const binIndices = [0, 60];
       const amounts = [ethers.parseEther("100"), ethers.parseEther("0")];

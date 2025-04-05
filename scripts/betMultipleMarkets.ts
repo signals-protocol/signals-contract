@@ -1,25 +1,25 @@
 import { ethers, network } from "hardhat";
 import * as dotenv from "dotenv";
 
-// .env 파일 로드
+// Load .env file
 dotenv.config();
 
 async function main() {
   console.log("Betting on multiple markets...");
   console.log("Network:", network.name);
 
-  // 네트워크에 따라 주소 설정
+  // Set addresses according to network
   let rangeBetManagerAddress = "";
   let rangeBetTokenAddress = "";
   let collateralTokenAddress = "";
 
   if (network.name === "localhost") {
-    // 로컬 배포 주소 (deploy:local 출력에서 가져온 값)
+    // Local deployment addresses (values from deploy:local output)
     rangeBetManagerAddress = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
     rangeBetTokenAddress = "0x75537828f2ce51be7289709686A69CbFDbB714F1";
     collateralTokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   } else if (network.name === "rskTestnet") {
-    // RSK 테스트넷의 경우 환경 변수 사용
+    // For RSK Testnet, use environment variables
     rangeBetManagerAddress = process.env.RSK_RANGE_BET_MANAGER || "";
     rangeBetTokenAddress = process.env.RSK_RANGE_BET_TOKEN || "";
     collateralTokenAddress = process.env.RSK_COLLATERAL_TOKEN || "";
@@ -33,7 +33,7 @@ async function main() {
       process.exit(1);
     }
   } else {
-    // 다른 네트워크의 경우 환경 변수가 있는지 확인
+    // For other networks, check if environment variables exist
     console.error(
       `Contract addresses for network '${network.name}' are not configured`
     );
@@ -49,7 +49,7 @@ async function main() {
   // Get signers
   const signers = await ethers.getSigners();
   const owner = signers[0];
-  // owner를 user로 사용 (두 번째 사용자가 없을 경우)
+  // Use owner as user (if there's no second user)
   const user = signers.length > 1 ? signers[1] : owner;
 
   console.log("\nUsing accounts:");
@@ -72,10 +72,10 @@ async function main() {
     collateralTokenAddress
   );
 
-  // 사용자에게 10,000 collateral 토큰 전송
+  // Transfer 10,000 collateral tokens to the user
   const collateralAmount = ethers.parseEther("10000");
 
-  // owner와 user가 다른 경우에만 전송
+  // Only transfer if owner and user are different
   if (owner.address !== user.address) {
     await collateralToken.transfer(user.address, collateralAmount);
     console.log("\n--- Transferred Collateral ---");
@@ -91,27 +91,27 @@ async function main() {
     );
   }
 
-  // 사용자가 RangeBetManager에 collateral 사용 승인
+  // User approves collateral usage for RangeBetManager
   await collateralToken
     .connect(user)
     .approve(await rangeBetManager.getAddress(), collateralAmount);
   console.log("Approved collateral for betting");
 
-  // 베팅할 마켓 ID 목록
+  // List of market IDs to bet on
   const marketIds = [5, 10, 15, 20, 25, 30];
 
-  // 각 마켓에 베팅
+  // Bet on each market
   console.log("\n--- Placing Bets ---");
 
   for (const marketId of marketIds) {
     try {
-      // 마켓 정보 확인
+      // Check market info
       const marketInfo = await rangeBetManager.getMarketInfo(marketId);
       const active = marketInfo[0];
       const closed = marketInfo[1];
       const tickSpacing = marketInfo[2];
 
-      // 마켓이 활성 상태인지 확인
+      // Check if market is active
       if (!active || closed) {
         console.log(
           `Market ${marketId} is not active or already closed. Skipping...`
@@ -119,40 +119,40 @@ async function main() {
         continue;
       }
 
-      // 80k~90k 사이에서 tickSpacing(60)의 배수 랜덤 선택
-      // 80000 ~ 90000 구간을 tickSpacing으로 나눈 범위 내에서 랜덤 값 선택 후 다시 tickSpacing 곱하기
+      // Randomly select a bin that's a multiple of tickSpacing in the range of 80k-90k
+      // Choose a random value in the range divided by tickSpacing, then multiply by tickSpacing again
       const minTick = 0;
       const maxTick = 2400;
 
-      // 구간 내 60의 배수 중 랜덤 선택
-      const minBinIndex = Math.ceil(minTick / Number(tickSpacing)); // 올림
-      const maxBinIndex = Math.floor(maxTick / Number(tickSpacing)); // 내림
+      // Random selection of multiple of 60 in the range
+      const minBinIndex = Math.ceil(minTick / Number(tickSpacing)); // Ceiling
+      const maxBinIndex = Math.floor(maxTick / Number(tickSpacing)); // Floor
       const randomBinIndex =
         Math.floor(Math.random() * (maxBinIndex - minBinIndex + 1)) +
         minBinIndex;
       const selectedBin = randomBinIndex * Number(tickSpacing);
 
-      // 각 베팅에 사용할 토큰 양
+      // Token amount for each bet
       const betAmount = ethers.parseEther("10");
 
-      // 충분한 여유를 둔 최대 담보 금액
+      // Maximum collateral amount with sufficient margin
       const maxCollateral = ethers.parseEther("20");
 
       console.log(
         `Betting on Market ${marketId}, Bin ${selectedBin} with ${betAmount} tokens...`
       );
 
-      // 베팅 실행
+      // Execute the bet
       const tx = await rangeBetManager.connect(user).buyTokens(
         marketId,
-        [selectedBin], // 선택된 bin
+        [selectedBin], // Selected bin
         [betAmount], // 10 tokens
         maxCollateral
       );
 
       await tx.wait();
 
-      // 베팅 확인
+      // Confirm bet
       const tokenId = await rangeBetToken.encodeTokenId(marketId, selectedBin);
       const userBalance = await rangeBetToken.balanceOf(user.address, tokenId);
 
@@ -167,7 +167,7 @@ async function main() {
     }
   }
 
-  // 남은 담보 확인
+  // Check remaining collateral
   const remainingBalance = await collateralToken.balanceOf(user.address);
   console.log("\n--- Betting Complete ---");
   console.log(`Remaining Collateral Balance: ${remainingBalance}`);

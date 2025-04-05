@@ -9,7 +9,7 @@ describe("Market Creation", function () {
   });
 
   it("Should create a market with correct parameters", async function () {
-    // 예상 마켓 종료 시간: 현재 시간 + 7일
+    // Expected market close time: current time + 7 days
     const closeTime = BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60);
 
     // Create a new market
@@ -73,7 +73,7 @@ describe("Market Creation", function () {
     );
   });
 
-  // 추가 테스트: 여러 시장 연속 생성 테스트
+  // Additional test: Test creating multiple markets sequentially
   it("Should create multiple markets sequentially with auto incrementing IDs", async function () {
     const closeTime = BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60);
 
@@ -136,7 +136,7 @@ describe("Market Creation", function () {
   });
 
   it("Should store openTimestamp and closeTimestamp correctly", async function () {
-    const closeTime = BigInt(Math.floor(Date.now() / 1000) + 14 * 24 * 60 * 60); // 2주 후
+    const closeTime = BigInt(Math.floor(Date.now() / 1000) + 14 * 24 * 60 * 60); // 2 weeks later
 
     const tx = await env.rangeBetManager.createMarket(60, -540, 540, closeTime);
     const receipt = await tx.wait();

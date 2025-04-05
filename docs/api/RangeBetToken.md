@@ -1,52 +1,52 @@
-# RangeBetToken API 문서
+# RangeBetToken API Documentation
 
-`RangeBetToken` 컨트랙트는 RangeBet 시스템의 토큰 관리를 담당하는 ERC1155 기반 컨트랙트입니다. 이 컨트랙트는 모든 마켓과 빈(bin)의 토큰을 추적합니다.
+The `RangeBetToken` contract is an ERC1155-based contract responsible for token management in the RangeBet system. This contract tracks tokens for all markets and bins.
 
-## 상수
+## Constants
 
 ```solidity
 uint256 private constant OFFSET = 1e9;
 ```
 
-- `OFFSET`: 음수 빈 인덱스를 처리하기 위한 오프셋 값
+- `OFFSET`: Offset value used to handle negative bin indices
 
-## 상태 변수
+## State Variables
 
 ```solidity
 address public manager;
 ```
 
-- `manager`: RangeBetManager 컨트랙트 주소 (토큰 발행 및 소각 권한 보유)
+- `manager`: RangeBetManager contract address (has token minting and burning authority)
 
-## 이벤트
+## Events
 
 ```solidity
 event TokenMinted(address indexed to, uint256 indexed tokenId, uint256 amount);
 event TokenBurned(address indexed from, uint256 indexed tokenId, uint256 amount);
 ```
 
-## 수정자
+## Modifiers
 
 ```solidity
 modifier onlyManager()
 ```
 
-함수 호출자가 설정된 `manager` 주소와 동일한지 확인합니다.
+Checks if the function caller is the same as the set `manager` address.
 
-## 생성자
+## Constructor
 
 ```solidity
 constructor(string memory uri_, address manager_) ERC1155(uri_)
 ```
 
-지정된 URI로 ERC1155 토큰을 초기화하고 manager 주소를 설정합니다.
+Initializes the ERC1155 token with the specified URI and sets the manager address.
 
-#### 매개변수
+#### Parameters
 
-- `uri_`: 토큰 메타데이터의 기본 URI
-- `manager_`: 매니저 컨트랙트 주소
+- `uri_`: Base URI for token metadata
+- `manager_`: Manager contract address
 
-## 토큰 관리 함수
+## Token Management Functions
 
 ### mint
 
@@ -54,21 +54,21 @@ constructor(string memory uri_, address manager_) ERC1155(uri_)
 function mint(address to, uint256 id, uint256 amount) external onlyManager
 ```
 
-특정 토큰 ID에 해당하는 토큰을 발행합니다.
+Mints tokens for a specific token ID.
 
-#### 매개변수
+#### Parameters
 
-- `to`: 토큰을 받을 주소
-- `id`: 토큰 ID (마켓 ID와 빈 인덱스가 인코딩됨)
-- `amount`: 발행할 토큰 수량
+- `to`: Address to receive the tokens
+- `id`: Token ID (encoded market ID and bin index)
+- `amount`: Token quantity to mint
 
-#### 조건
+#### Conditions
 
-- 함수 호출자가 `manager`여야 합니다.
+- The function caller must be the `manager`.
 
-#### 이벤트
+#### Events
 
-- `TokenMinted`: 토큰 발행 시 발생합니다.
+- `TokenMinted`: Emitted when tokens are minted.
 
 ### mintBatch
 
@@ -76,17 +76,17 @@ function mint(address to, uint256 id, uint256 amount) external onlyManager
 function mintBatch(address to, uint256[] calldata ids, uint256[] calldata amounts) external onlyManager
 ```
 
-여러 토큰 ID에 대한 토큰을 한 번에 발행합니다.
+Mints tokens for multiple token IDs at once.
 
-#### 매개변수
+#### Parameters
 
-- `to`: 토큰을 받을 주소
-- `ids`: 토큰 ID 배열
-- `amounts`: 각 토큰 ID에 대해 발행할 수량 배열
+- `to`: Address to receive the tokens
+- `ids`: Array of token IDs
+- `amounts`: Array of quantities to mint for each token ID
 
-#### 조건
+#### Conditions
 
-- 함수 호출자가 `manager`여야 합니다.
+- The function caller must be the `manager`.
 
 ### burn
 
@@ -94,23 +94,23 @@ function mintBatch(address to, uint256[] calldata ids, uint256[] calldata amount
 function burn(address from, uint256 id, uint256 amount) external onlyManager
 ```
 
-특정 주소에서 특정 토큰 ID의 토큰을 소각합니다.
+Burns tokens of a specific token ID from a specific address.
 
-#### 매개변수
+#### Parameters
 
-- `from`: 토큰을 소각할 주소
-- `id`: 토큰 ID
-- `amount`: 소각할 토큰 수량
+- `from`: Address to burn tokens from
+- `id`: Token ID
+- `amount`: Token quantity to burn
 
-#### 조건
+#### Conditions
 
-- 함수 호출자가 `manager`여야 합니다.
+- The function caller must be the `manager`.
 
-#### 이벤트
+#### Events
 
-- `TokenBurned`: 토큰 소각 시 발생합니다.
+- `TokenBurned`: Emitted when tokens are burned.
 
-## 토큰 ID 인코딩/디코딩 함수
+## Token ID Encoding/Decoding Functions
 
 ### encodeTokenId
 
@@ -118,26 +118,26 @@ function burn(address from, uint256 id, uint256 amount) external onlyManager
 function encodeTokenId(uint256 marketId, int256 binIndex) public pure returns (uint256)
 ```
 
-마켓 ID와 빈 인덱스를 단일 토큰 ID로 인코딩합니다.
+Encodes a market ID and bin index into a single token ID.
 
-#### 매개변수
+#### Parameters
 
-- `marketId`: 마켓 ID
-- `binIndex`: 빈 인덱스
+- `marketId`: Market ID
+- `binIndex`: Bin index
 
-#### 반환값
+#### Return Value
 
-- 인코딩된 토큰 ID
+- Encoded token ID
 
-#### 인코딩 방식
+#### Encoding Method
 
-토큰 ID는 다음과 같이 계산됩니다:
+The token ID is calculated as follows:
 
 ```
 tokenId = (marketId << 128) + (binIndex + OFFSET)
 ```
 
-여기서 `OFFSET`은 음수 빈 인덱스를 처리하기 위해 사용됩니다.
+Where `OFFSET` is used to handle negative bin indices.
 
 ### decodeTokenId
 
@@ -145,27 +145,27 @@ tokenId = (marketId << 128) + (binIndex + OFFSET)
 function decodeTokenId(uint256 tokenId) public pure returns (uint256 marketId, int256 binIndex)
 ```
 
-토큰 ID를 마켓 ID와 빈 인덱스로 디코딩합니다.
+Decodes a token ID into a market ID and bin index.
 
-#### 매개변수
+#### Parameters
 
-- `tokenId`: 디코딩할 토큰 ID
+- `tokenId`: Token ID to decode
 
-#### 반환값
+#### Return Values
 
-- `marketId`: 마켓 ID
-- `binIndex`: 빈 인덱스
+- `marketId`: Market ID
+- `binIndex`: Bin index
 
-#### 디코딩 방식
+#### Decoding Method
 
-마켓 ID와 빈 인덱스는 다음과 같이 추출됩니다:
+The market ID and bin index are extracted as follows:
 
 ```
 marketId = tokenId >> 128;
 binIndex = int256(tokenId & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) - int256(OFFSET);
 ```
 
-## 관리 함수
+## Management Functions
 
 ### setManager
 
@@ -173,54 +173,54 @@ binIndex = int256(tokenId & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) - int256(OFFSET)
 function setManager(address newManager) external onlyManager
 ```
 
-매니저 주소를 새 주소로 업데이트합니다. 현재 매니저만 이 함수를 호출할 수 있습니다.
+Updates the manager address to a new address. Only the current manager can call this function.
 
-#### 매개변수
+#### Parameters
 
-- `newManager`: 새로운 매니저 주소
+- `newManager`: New manager address
 
-#### 조건
+#### Conditions
 
-- 함수 호출자가 현재 `manager`여야 합니다.
-- 새 매니저 주소는 0 주소가 아니어야 합니다.
+- The function caller must be the current `manager`.
+- The new manager address must not be the zero address.
 
-## 사용 예시
+## Usage Examples
 
-### 토큰 ID 인코딩/디코딩
+### Token ID Encoding/Decoding
 
 ```solidity
-// 컨트랙트 인스턴스 가져오기
+// Get contract instance
 RangeBetToken token = RangeBetToken(tokenAddress);
 
-// 토큰 ID 인코딩
+// Encode token ID
 uint256 tokenId = token.encodeTokenId(1, 60);
 
-// 토큰 ID 디코딩
+// Decode token ID
 (uint256 marketId, int256 binIndex) = token.decodeTokenId(tokenId);
 // marketId == 1, binIndex == 60
 ```
 
-### 토큰 밸런스 조회
+### Querying Token Balance
 
 ```solidity
-// 컨트랙트 인스턴스 가져오기
+// Get contract instance
 RangeBetToken token = RangeBetToken(tokenAddress);
 
-// 특정 마켓, 특정 빈의 토큰 밸런스 조회
+// Query token balance for a specific market and bin
 uint256 marketId = 1;
 int256 binIndex = 60;
 uint256 tokenId = token.encodeTokenId(marketId, binIndex);
 uint256 balance = token.balanceOf(userAddress, tokenId);
 ```
 
-### 토큰 발행 (RangeBetManager에서만 호출 가능)
+### Minting Tokens (Only callable from RangeBetManager)
 
 ```solidity
-// RangeBetManager 내부 구현 예시
+// Example implementation inside RangeBetManager
 function buyTokens(...) external {
-    // ... 비용 계산 등
+    // ... cost calculation, etc.
 
-    // 토큰 발행
+    // Mint tokens
     uint256[] memory tokenIds = new uint256[](binIndices.length);
     uint256[] memory mintedAmounts = new uint256[](binIndices.length);
 
@@ -229,29 +229,29 @@ function buyTokens(...) external {
         mintedAmounts[i] = amounts[i];
     }
 
-    // 배치 발행 실행
+    // Execute batch minting
     rangeBetToken.mintBatch(msg.sender, tokenIds, mintedAmounts);
 
     // ...
 }
 ```
 
-### 토큰 소각 (RangeBetManager에서만 호출 가능)
+### Burning Tokens (Only callable from RangeBetManager)
 
 ```solidity
-// RangeBetManager 내부 구현 예시
+// Example implementation inside RangeBetManager
 function claimReward(uint256 marketId, int256 binIndex) external {
-    // ... 보상 계산 등
+    // ... reward calculation, etc.
 
-    // 토큰 ID 계산
+    // Calculate token ID
     uint256 tokenId = rangeBetToken.encodeTokenId(marketId, binIndex);
 
-    // 사용자의 토큰 밸런스 조회
+    // Query user's token balance
     uint256 userBalance = rangeBetToken.balanceOf(msg.sender, tokenId);
 
-    // 토큰 소각
+    // Burn tokens
     rangeBetToken.burn(msg.sender, tokenId, userBalance);
 
-    // ... 보상 전송
+    // ... transfer rewards
 }
 ```

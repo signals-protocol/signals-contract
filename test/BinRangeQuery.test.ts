@@ -11,7 +11,7 @@ describe("Bin Range Query", function () {
 
   describe("getBinQuantitiesInRange", function () {
     it("Should return correct quantities for a range of bins", async function () {
-      // 마켓에 몇 개의 빈에 토큰을 먼저 구매하여 상태를 만듦
+      // Buy tokens on the market first to create a state
       const bins = [-120, -60, 0, 60, 120];
       const amounts = bins.map(() => ethers.parseEther("100"));
 
@@ -19,10 +19,10 @@ describe("Bin Range Query", function () {
         env.marketId,
         bins,
         amounts,
-        ethers.parseEther("500") // 충분한 담보
+        ethers.parseEther("500") // Sufficient collateral
       );
 
-      // 구간 쿼리 함수 호출
+      // Call the range query function
       const [binIndices, quantities] =
         await env.rangeBetManager.getBinQuantitiesInRange(
           env.marketId,

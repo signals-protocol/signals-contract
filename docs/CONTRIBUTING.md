@@ -1,29 +1,29 @@
-# RangeBet 기여 가이드
+# RangeBet Contribution Guide
 
-RangeBet 프로젝트에 기여하는 데 관심을 가져주셔서 감사합니다! 이 문서는 프로젝트에 기여하는 방법을 설명합니다.
+Thank you for your interest in contributing to the RangeBet project! This document explains how to contribute to the project.
 
-## 목차
+## Table of Contents
 
-1. [시작하기](#시작하기)
-2. [개발 환경 설정](#개발-환경-설정)
-3. [코딩 스타일](#코딩-스타일)
-4. [테스트](#테스트)
-5. [풀 리퀘스트 제출](#풀-리퀘스트-제출)
-6. [이슈 보고](#이슈-보고)
-7. [문서화](#문서화)
+1. [Getting Started](#getting-started)
+2. [Development Environment Setup](#development-environment-setup)
+3. [Coding Style](#coding-style)
+4. [Tests](#tests)
+5. [Submitting Pull Requests](#submitting-pull-requests)
+6. [Reporting Issues](#reporting-issues)
+7. [Documentation](#documentation)
 
-## 시작하기
+## Getting Started
 
-### 사전 요구사항
+### Prerequisites
 
-RangeBet 개발에 참여하기 위해서는 다음 도구가 필요합니다:
+To participate in RangeBet development, you need the following tools:
 
-- [Node.js](https://nodejs.org/) (v16 이상)
-- [Yarn](https://yarnpkg.com/) (v1.22 이상)
+- [Node.js](https://nodejs.org/) (v16 or higher)
+- [Yarn](https://yarnpkg.com/) (v1.22 or higher)
 - [Git](https://git-scm.com/)
 - [Hardhat](https://hardhat.org/)
 
-### 저장소 복제
+### Repository Clone
 
 ```bash
 git clone https://github.com/yourusername/rangebet.git
@@ -31,11 +31,11 @@ cd rangebet
 yarn install
 ```
 
-## 개발 환경 설정
+## Development Environment Setup
 
-### 환경 변수
+### Environment Variables
 
-`.env` 파일을 프로젝트 루트에 생성하고 다음 변수를 설정합니다:
+Create an `.env` file in the project root and set the following variables:
 
 ```
 PRIVATE_KEY=your_private_key
@@ -43,52 +43,52 @@ INFURA_PROJECT_ID=your_infura_project_id
 ETHERSCAN_API_KEY=your_etherscan_api_key
 ```
 
-### 빌드 및 테스트
+### Build and Test
 
 ```bash
-# 컨트랙트 컴파일
+# Compile contracts
 yarn compile
 
-# 테스트 실행
+# Run tests
 yarn test
 
-# 코드 커버리지 확인
+# Check code coverage
 yarn coverage
 ```
 
-## 코딩 스타일
+## Coding Style
 
-RangeBet 프로젝트는 일관된 코드 스타일을 유지하기 위해 다음 가이드라인을 따릅니다:
+The RangeBet project follows these guidelines to maintain consistent code style:
 
 ### Solidity
 
-- [Solidity Style Guide](https://docs.soliditylang.org/en/v0.8.17/style-guide.html)를 따릅니다.
-- 들여쓰기: 4 공백
-- 최대 줄 길이: 100자
-- 함수와 변수 이름: camelCase
-- 상수: UPPER_CASE
-- 컨트랙트와 구조체 이름: PascalCase
-- 모든 함수와 상태 변수에 NatSpec 주석을 추가합니다.
+- Follow the [Solidity Style Guide](https://docs.soliditylang.org/en/v0.8.17/style-guide.html).
+- Indentation: 4 spaces
+- Maximum line length: 100 characters
+- Function and variable names: camelCase
+- Constants: UPPER_CASE
+- Contract and struct names: PascalCase
+- Add NatSpec comments to all functions and state variables.
 
-예시:
+Example:
 
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-/// @title 예시 컨트랙트
-/// @notice 이 컨트랙트는 예시 목적으로 사용됩니다
-/// @dev 개발자 노트
+/// @title Example Contract
+/// @notice This contract is used for example purposes
+/// @dev Developer notes
 contract ExampleContract {
-    /// @notice 상수 설명
+    /// @notice Constant description
     uint256 public constant MAX_VALUE = 1000;
 
-    /// @notice 상태 변수 설명
+    /// @notice State variable description
     uint256 public totalAmount;
 
-    /// @notice 함수 설명
-    /// @param _value 값 설명
-    /// @return 반환값 설명
+    /// @notice Function description
+    /// @param _value Value description
+    /// @return Return value description
     function exampleFunction(uint256 _value) external returns (bool) {
         require(_value <= MAX_VALUE, "Value too high");
         totalAmount += _value;
@@ -99,19 +99,19 @@ contract ExampleContract {
 
 ### TypeScript/JavaScript
 
-- 들여쓰기: 2 공백
-- 세미콜론: 사용
-- 따옴표: 작은 따옴표 (`'`)
-- 변수 선언: `const` 또는 `let` 사용 (`var` 사용하지 않음)
-- 함수와 변수 이름: camelCase
-- 클래스와 인터페이스 이름: PascalCase
-- 모든 함수와 클래스에 JSDoc 주석을 추가합니다.
+- Indentation: 2 spaces
+- Semicolons: Use them
+- Quotes: Single quotes (`'`)
+- Variable declarations: Use `const` or `let` (do not use `var`)
+- Function and variable names: camelCase
+- Class and interface names: PascalCase
+- Add JSDoc comments to all functions and classes.
 
-예시:
+Example:
 
 ```typescript
 /**
- * 사용자 인터페이스
+ * User interface
  */
 interface User {
   id: string;
@@ -119,12 +119,12 @@ interface User {
 }
 
 /**
- * 사용자 정보를 가져옵니다
- * @param userId 사용자 ID
- * @returns 사용자 객체
+ * Fetches user information
+ * @param userId User ID
+ * @returns User object
  */
 async function getUser(userId: string): Promise<User> {
-  // 구현
+  // Implementation
   return {
     id: userId,
     name: "Test User",
@@ -132,133 +132,134 @@ async function getUser(userId: string): Promise<User> {
 }
 ```
 
-## 테스트
+## Tests
 
-### 테스트 작성
+### Writing Tests
 
-모든 새 기능과 버그 수정에는 테스트 케이스가 포함되어야 합니다. RangeBet은 [Hardhat](https://hardhat.org/)과 [Chai](https://www.chaijs.com/)를 사용합니다.
+All new features and bug fixes should include test cases. RangeBet uses [Hardhat](https://hardhat.org/) and [Chai](https://www.chaijs.com/).
 
-테스트는 `test/` 디렉토리에 작성하고 다음 명명 규칙을 따릅니다:
+Tests should be written in the `test/` directory and follow this naming convention:
 
-- `UnitTest.test.ts`: 단위 테스트
-- `Integration.test.ts`: 통합 테스트
+- `UnitTest.test.ts`: Unit tests
+- `Integration.test.ts`: Integration tests
 
-### 테스트 커버리지
+### Test Coverage
 
-기능 변경 후 테스트 커버리지를 확인합니다:
+Check test coverage after feature changes:
 
 ```bash
 yarn coverage
 ```
 
-목표 커버리지:
+Coverage targets:
 
-- 라인 커버리지: 최소 85%
-- 함수 커버리지: 최소 90%
-- 브랜치 커버리지: 최소 80%
+- Line coverage: minimum 85%
+- Function coverage: minimum 90%
+- Branch coverage: minimum 80%
 
-## 풀 리퀘스트 제출
+## Submitting Pull Requests
 
-### 브랜치 전략
+### Branch Strategy
 
-- `main`: 안정적인 프로덕션 코드
-- `develop`: 개발 브랜치
-- 기능 브랜치: `feature/feature-name`
-- 버그 수정 브랜치: `fix/bug-name`
+- `main`: Stable production code
+- `develop`: Development branch
+- Feature branches: `feature/feature-name`
+- Bug fix branches: `fix/bug-name`
 
-### 풀 리퀘스트 프로세스
+### Pull Request Process
 
-1. 최신 `develop` 브랜치에서 새 브랜치를 만듭니다.
-2. 코드 변경을 구현하고 테스트를 작성합니다.
-3. 모든 테스트가 통과하는지 확인합니다.
-4. 변경 사항을 커밋하고, 의미 있는 커밋 메시지를 작성합니다.
-5. `develop` 브랜치로 풀 리퀘스트를 생성합니다.
-6. 풀 리퀘스트 템플릿을 작성합니다.
+1. Create a new branch from the latest `develop` branch.
+2. Implement code changes and write tests.
+3. Make sure all tests pass.
+4. Commit your changes and write meaningful commit messages.
+5. Create a pull request to the `develop` branch.
+6. Fill out the pull request template.
 
-### 커밋 메시지 규칙
+### Commit Message Convention
 
-커밋 메시지는 다음 형식을 따릅니다:
-
-```
-<유형>: <제목>
-
-<본문>
-
-<푸터>
-```
-
-유형:
-
-- `feat`: 새 기능
-- `fix`: 버그 수정
-- `docs`: 문서 변경
-- `style`: 코드 포맷팅
-- `refactor`: 코드 리팩토링
-- `test`: 테스트 추가/수정
-- `chore`: 빌드 프로세스/도구 변경
-
-예시:
+Commit messages should follow this format:
 
 ```
-feat: 마켓 종료 후 보상 분배 메커니즘 추가
+<type>: <title>
 
-RangeBetManager에 승리한 빈의 토큰 보유자에게 보상을 분배하는
-새로운 함수를 추가합니다. 보상은 토큰 보유 비율에 따라 분배됩니다.
+<body>
+
+<footer>
+```
+
+Types:
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code formatting
+- `refactor`: Code refactoring
+- `test`: Adding/modifying tests
+- `chore`: Build process/tool changes
+
+Example:
+
+```
+feat: Add reward distribution mechanism after market closure
+
+Adds a new function to RangeBetManager that distributes rewards to
+token holders of the winning bin. Rewards are distributed proportionally
+based on token holdings.
 
 Closes #123
 ```
 
-## 이슈 보고
+## Reporting Issues
 
-### 버그 보고
+### Bug Reports
 
-버그를 발견하면 GitHub 이슈에 보고해 주세요. 다음 정보를 포함해 주세요:
+If you find a bug, please report it in GitHub Issues. Include the following information:
 
-1. 버그 설명
-2. 재현 단계
-3. 예상 동작
-4. 실제 동작
-5. 환경 정보 (Node.js 버전, Hardhat 버전 등)
-6. 가능한 경우 오류 로그
+1. Bug description
+2. Steps to reproduce
+3. Expected behavior
+4. Actual behavior
+5. Environment information (Node.js version, Hardhat version, etc.)
+6. Error logs if available
 
-### 기능 요청
+### Feature Requests
 
-새 기능을 제안하려면 GitHub 이슈에 작성해 주세요. 다음 정보를 포함해 주세요:
+To suggest a new feature, create a GitHub Issue. Include the following information:
 
-1. 기능 설명
-2. 사용 사례와 목적
-3. 가능한 구현 방법에 대한 아이디어
+1. Feature description
+2. Use cases and purpose
+3. Ideas for possible implementation
 
-## 문서화
+## Documentation
 
-### 코드 주석
+### Code Comments
 
-모든 퍼블릭 함수와 컨트랙트에는 NatSpec/JSDoc 주석을 추가해야 합니다:
+All public functions and contracts should have NatSpec/JSDoc comments:
 
-- `@title`: 컨트랙트/파일 제목
-- `@notice`: 함수/컨트랙트가 무엇을 하는지 설명
-- `@dev`: 개발자를 위한 추가 정보
-- `@param`: 매개변수 설명
-- `@return`: 반환값 설명
+- `@title`: Contract/file title
+- `@notice`: Explains what the function/contract does
+- `@dev`: Additional information for developers
+- `@param`: Parameter description
+- `@return`: Return value description
 
-### API 문서
+### API Documentation
 
-API 변경 시 `/docs/api/` 디렉토리의 해당 마크다운 파일을 업데이트해야 합니다.
+When changing the API, update the corresponding markdown file in the `/docs/api/` directory.
 
-### 아키텍처 문서
+### Architecture Documentation
 
-아키텍처 변경 시 `/docs/ARCHITECTURE.md` 파일을 업데이트해야 합니다.
+When changing the architecture, update the `/docs/ARCHITECTURE.md` file.
 
-## 보안 취약점
+## Security Vulnerabilities
 
-보안 취약점을 발견한 경우 GitHub 이슈에 공개적으로 보고하지 마세요. 대신 다음 이메일로 직접 연락해 주세요: security@example.com
+If you discover a security vulnerability, do not report it publicly in GitHub Issues. Instead, please contact us directly at: security@example.com
 
-## 라이선스
+## License
 
-RangeBet 프로젝트는 MIT 라이선스로 제공됩니다. 코드 기여 시 이 라이선스 조건에 동의하는 것으로 간주합니다.
+The RangeBet project is provided under the MIT license. By contributing code, you agree to the terms of this license.
 
-## 질문 및 지원
+## Questions and Support
 
-질문이 있거나 도움이 필요한 경우 GitHub 이슈에 질문을 작성하거나 Discord 채널에 참여해 주세요.
+If you have questions or need help, please create an issue on GitHub or join our Discord channel.
 
-RangeBet 프로젝트에 기여해 주셔서 감사합니다!
+Thank you for contributing to the RangeBet project!

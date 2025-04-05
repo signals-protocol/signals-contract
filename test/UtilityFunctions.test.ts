@@ -10,7 +10,7 @@ describe("Utility Functions", function () {
   });
 
   describe("calculateBinCost", function () {
-    // 추가 테스트: calculateBinCost 확인 - 비활성 마켓에서 호출
+    // Additional test: Verify calculateBinCost - called on an inactive market
     it("Should return 0 for inactive market", async function () {
       // Make a bet first to have some state
       await env.rangeBetManager
@@ -35,7 +35,7 @@ describe("Utility Functions", function () {
       expect(cost).to.equal(0);
     });
 
-    // 추가 테스트: calculateBinCost 확인 - 닫힌 마켓에서 호출
+    // Additional test: Verify calculateBinCost - called on a closed market
     it("Should return 0 for closed market", async function () {
       // Make a bet first to have some state
       await env.rangeBetManager
@@ -60,7 +60,7 @@ describe("Utility Functions", function () {
       expect(cost).to.equal(0);
     });
 
-    // 추가 테스트: calculateBinCost 확인 - 범위 밖 binIndex에 대해 호출
+    // Additional test: Verify calculateBinCost - called with binIndex outside range
     it("Should return 0 for out of range bin index", async function () {
       // Calculate cost for bin index outside the range
       const cost = await env.rangeBetManager.calculateBinCost(
@@ -72,7 +72,7 @@ describe("Utility Functions", function () {
       expect(cost).to.equal(0);
     });
 
-    // 추가 테스트: calculateBinCost 확인 - 잘못된 binIndex에 대해 호출
+    // Additional test: Verify calculateBinCost - called with invalid binIndex
     it("Should return 0 for invalid bin index", async function () {
       // Calculate cost for bin index that's not a multiple of tickSpacing
       const cost = await env.rangeBetManager.calculateBinCost(

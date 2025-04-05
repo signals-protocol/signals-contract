@@ -1,74 +1,74 @@
-# RangeBet 통합 가이드
+# RangeBet Integration Guide
 
-이 문서는 RangeBet 예측 시장 시스템과 통합하려는 개발자를 위한 가이드입니다.
+This document is a guide for developers looking to integrate with the RangeBet prediction market system.
 
-## 목차
+## Table of Contents
 
-1. [개요](#개요)
-2. [컨트랙트 주소](#컨트랙트-주소)
-3. [JavaScript/TypeScript 통합](#javascripttypescript-통합)
-4. [스마트 컨트랙트 통합](#스마트-컨트랙트-통합)
-5. [이벤트 모니터링](#이벤트-모니터링)
-6. [오류 처리](#오류-처리)
-7. [테스트 환경](#테스트-환경)
+1. [Overview](#overview)
+2. [Contract Addresses](#contract-addresses)
+3. [JavaScript/TypeScript Integration](#javascripttypescript-integration)
+4. [Smart Contract Integration](#smart-contract-integration)
+5. [Event Monitoring](#event-monitoring)
+6. [Error Handling](#error-handling)
+7. [Test Environment](#test-environment)
 
-## 개요
+## Overview
 
-RangeBet 시스템은 다음 핵심 컨트랙트로 구성됩니다:
+The RangeBet system consists of the following core contracts:
 
-- **RangeBetManager**: 마켓 생성 및 관리 컨트랙트
-- **RangeBetToken**: ERC1155 토큰 컨트랙트
-- **RangeBetMath**: 베팅 비용 계산 라이브러리
-- **담보 토큰**: 시스템에서 사용하는 ERC20 토큰
+- **RangeBetManager**: Contract for market creation and management
+- **RangeBetToken**: ERC1155 token contract
+- **RangeBetMath**: Betting cost calculation library
+- **Collateral Token**: ERC20 token used in the system
 
-이 가이드는 프론트엔드나 다른 스마트 컨트랙트에서 RangeBet 시스템과 통합하는 방법을 보여줍니다.
+This guide shows how to integrate with the RangeBet system from a frontend or another smart contract.
 
-## 컨트랙트 주소
+## Contract Addresses
 
-### 테스트넷 (Sepolia)
+### Testnet (Sepolia)
 
 ```
 RangeBetManager: 0x...
 RangeBetToken: 0x...
-담보 토큰 (Mock): 0x...
+Collateral Token (Mock): 0x...
 ```
 
-### 메인넷
+### Mainnet
 
 ```
-아직 배포되지 않음
+Not yet deployed
 ```
 
-## JavaScript/TypeScript 통합
+## JavaScript/TypeScript Integration
 
-### 필요한 종속성
+### Required Dependencies
 
 ```bash
 npm install ethers@6.4.0
-# 또는
+# or
 yarn add ethers@6.4.0
 ```
 
-### 컨트랙트 인터페이스 설정
+### Setting Up Contract Interfaces
 
 ```typescript
 import { ethers } from "ethers";
 
-// ABI 파일 임포트
+// Import ABI files
 import RangeBetManagerABI from "./abis/RangeBetManager.json";
 import RangeBetTokenABI from "./abis/RangeBetToken.json";
 import ERC20ABI from "./abis/ERC20.json";
 
-// 컨트랙트 주소
+// Contract addresses
 const MANAGER_ADDRESS = "0x...";
 const TOKEN_ADDRESS = "0x...";
 const COLLATERAL_ADDRESS = "0x...";
 
-// 프로바이더 설정
+// Set up provider
 const provider = new ethers.BrowserProvider(window.ethereum);
 const signer = await provider.getSigner();
 
-// 컨트랙트 인스턴스 생성
+// Create contract instances
 const managerContract = new ethers.Contract(
   MANAGER_ADDRESS,
   RangeBetManagerABI,
@@ -88,7 +88,7 @@ const collateralContract = new ethers.Contract(
 );
 ```
 
-### 마켓 조회
+### Market Queries
 
 ```typescript
 async function getMarketInfo(marketId: number) {
@@ -108,12 +108,12 @@ async function getMarketInfo(marketId: number) {
   };
 }
 
-// 특정 빈의 토큰 수량 조회
+// Query token quantity for a specific bin
 async function getBinQuantity(marketId: number, binIndex: number) {
   return await managerContract.getBinQuantity(marketId, binIndex);
 }
 
-// 사용자의 토큰 밸런스 조회
+// Query user's token balance
 async function getUserTokenBalance(
   marketId: number,
   binIndex: number,
@@ -124,7 +124,7 @@ async function getUserTokenBalance(
 }
 ```
 
-### 베팅 (토큰 구매)
+### Betting (Token Purchase)
 
 ```typescript
 async function placeBet(
@@ -133,14 +133,14 @@ async function placeBet(
   amounts: string[],
   maxCollateral: string
 ) {
-  // 담보 토큰 승인 (첫 번째 거래)
+  // Approve collateral token (first transaction)
   const approveTx = await collateralContract.approve(
     MANAGER_ADDRESS,
     ethers.parseUnits(maxCollateral, 18)
   );
   await approveTx.wait();
 
-  // 토큰 구매 (두 번째 거래)
+  // Buy tokens (second transaction)
   const buyTx = await managerContract.buyTokens(
     marketId,
     binIndices,
@@ -152,7 +152,7 @@ async function placeBet(
 }
 ```
 
-### 보상 청구
+### Claiming Rewards
 
 ```typescript
 async function claimReward(marketId: number, binIndex: number) {
@@ -161,21 +161,21 @@ async function claimReward(marketId: number, binIndex: number) {
 }
 ```
 
-### 모든 담보 인출 (관리자 전용)
+### Withdrawing All Collateral (Admin Only)
 
 ```typescript
 async function withdrawAllCollateral(to: string) {
-  // 소유자/관리자만 호출할 수 있음
+  // Can only be called by owner/admin
   const tx = await managerContract.withdrawAllCollateral(to);
   return await tx.wait();
 }
 ```
 
-## 스마트 컨트랙트 통합
+## Smart Contract Integration
 
-다른 스마트 컨트랙트에서 RangeBet과 통합하려면:
+To integrate with RangeBet from another smart contract:
 
-### 인터페이스 정의
+### Interface Definitions
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -225,7 +225,7 @@ interface IRangeBetToken {
 }
 ```
 
-### 컨트랙트 통합 예제
+### Contract Integration Example
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -249,41 +249,20 @@ contract RangeBetIntegration {
         rangeBetToken = IRangeBetToken(_rangeBetToken);
         collateralToken = IERC20(_collateralToken);
     }
-
-    // 사용자를 대신하여 베팅 실행
-    function placeBetOnBehalf(
-        address user,
-        uint256 marketId,
-        int256[] calldata binIndices,
-        uint256[] calldata amounts,
-        uint256 maxCollateral
-    ) external {
-        // 사용자로부터 컨트랙트로 담보 토큰 전송
-        collateralToken.transferFrom(user, address(this), maxCollateral);
-
-        // 컨트랙트에서 RangeBetManager로 담보 토큰 승인
-        collateralToken.approve(address(rangeBetManager), maxCollateral);
-
-        // 베팅 실행
-        rangeBetManager.buyTokens(marketId, binIndices, amounts, maxCollateral);
-
-        // 토큰을 사용자에게 전송 (필요시)
-        // 참고: 이 컨트랙트는 ERC1155 수신자 인터페이스를 구현해야 할 수 있음
-    }
 }
 ```
 
-## 이벤트 모니터링
+## Event Monitoring
 
-RangeBet 시스템은 다음 주요 이벤트를 발생시킵니다:
+The RangeBet system generates the following key events:
 
-### RangeBetManager 이벤트
+### RangeBetManager Events
 
 ```solidity
-// 마켓 생성 이벤트
+// Market creation event
 event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick, uint256 openTimestamp, uint256 closeTimestamp);
 
-// 토큰 구매 이벤트
+// Token purchase event
 event TokensBought(
     uint256 indexed marketId,
     address indexed buyer,
@@ -292,10 +271,10 @@ event TokensBought(
     uint256 totalCost
 );
 
-// 마켓 종료 이벤트
+// Market closure event
 event MarketClosed(uint256 indexed marketId, int256 winningBin);
 
-// 보상 청구 이벤트
+// Reward claiming event
 event RewardClaimed(
     uint256 indexed marketId,
     address indexed claimer,
@@ -303,14 +282,14 @@ event RewardClaimed(
     uint256 amount
 );
 
-// 담보 인출 이벤트
+// Collateral withdrawal event
 event CollateralWithdrawn(address indexed to, uint256 amount);
 ```
 
-### 웹 애플리케이션에서 이벤트 리스닝
+### Web Application Event Listening
 
 ```typescript
-// 마켓 생성 이벤트 리스닝
+// Market creation event listening
 managerContract.on(
   "MarketCreated",
   (
@@ -322,273 +301,120 @@ managerContract.on(
     closeTimestamp,
     event
   ) => {
-    console.log(`마켓 생성: ID ${marketId}`);
-    // UI 업데이트 로직
+    console.log(`Market created: ID ${marketId}`);
+    // UI update logic
   }
 );
 
-// 토큰 구매 이벤트 리스닝
+// Token purchase event listening
 managerContract.on(
   "TokensBought",
   (marketId, buyer, binIndices, amounts, totalCost, event) => {
-    console.log(`토큰 구매: 마켓 ${marketId}, 구매자 ${buyer}`);
-    // UI 업데이트 로직
+    console.log(`Tokens bought: Market ${marketId}, Buyer ${buyer}`);
+    // UI update logic
   }
 );
 
-// 마켓 종료 이벤트 리스닝
+// Market closure event listening
 managerContract.on("MarketClosed", (marketId, winningBin, event) => {
-  console.log(`마켓 종료: ID ${marketId}, 승리 빈 ${winningBin}`);
-  // UI 업데이트 로직
+  console.log(`Market closed: ID ${marketId}, Winning bin ${winningBin}`);
+  // UI update logic
 });
 
-// 보상 청구 이벤트 리스닝
+// Reward claiming event listening
 managerContract.on(
   "RewardClaimed",
   (marketId, claimer, binIndex, amount, event) => {
     console.log(
-      `보상 청구: 마켓 ${marketId}, 청구자 ${claimer}, 보상 ${ethers.formatUnits(
+      `Reward claimed: Market ${marketId}, Claimer ${claimer}, Reward ${ethers.formatUnits(
         amount,
         18
       )}`
     );
-    // UI 업데이트 로직
+    // UI update logic
   }
 );
 ```
 
-## 오류 처리
+## Error Handling
 
-RangeBet 시스템 컨트랙트는 다음과 같은 주요 오류를 발생시킬 수 있습니다:
+The RangeBet system contracts can generate the following key errors:
 
 ```typescript
 try {
-  // 컨트랙트 호출
+  // Contract call
 } catch (error: any) {
   const errorMessage = error.message;
 
   if (errorMessage.includes("Market is not active")) {
-    // 마켓이 활성화되지 않음
+    // Market is not active
   } else if (errorMessage.includes("Market is already closed")) {
-    // 마켓이 이미 종료됨
+    // Market is already closed
   } else if (errorMessage.includes("Bin index out of range")) {
-    // 잘못된 빈 인덱스
-  } else if (errorMessage.includes("ERC20: insufficient allowance")) {
-    // 토큰 승인 부족
+    // Bin index outside the allowed range
+  } else if (
+    errorMessage.includes("Bin index must be a multiple of tick spacing")
+  ) {
+    // Bin index not a multiple of tick spacing
+  } else if (errorMessage.includes("Market is closed")) {
+    // Market is closed, cannot place bets
+  } else if (errorMessage.includes("Array lengths must match")) {
+    // binIndices and amounts arrays must have the same length
   } else if (errorMessage.includes("Cost exceeds max collateral")) {
-    // 최대 담보 초과
+    // The calculated cost exceeds the maxCollateral parameter
+  } else if (errorMessage.includes("Winning bin out of range")) {
+    // When closing a market, the winning bin is outside the range
   } else if (errorMessage.includes("Not the winning bin")) {
-    // 승리 빈이 아님
+    // When claiming a reward, binIndex is not the winning bin
   } else if (errorMessage.includes("No tokens to claim")) {
-    // 청구할 토큰이 없음 (이미 청구했거나 토큰을 보유하지 않음)
+    // User has no tokens in the winning bin
+  } else if (errorMessage.includes("Transfer failed")) {
+    // ERC20 token transfer failed
   } else {
-    // 기타 오류
-    console.error("거래 오류:", errorMessage);
+    // Other errors
+    console.error("Unexpected error:", errorMessage);
   }
 }
 ```
 
-## 테스트 환경
+## Test Environment
 
-### 로컬 개발을 위한 하드햇 설정
+To test integration with RangeBet without using real assets, you can use the Sepolia testnet.
 
-```typescript
-// scripts/localDeploy.ts
+### Getting Testnet Tokens
 
-import { ethers } from "hardhat";
+1. Request testnet ETH from a Sepolia faucet
+2. Use the mock collateral tokens from our test deployment
 
-async function main() {
-  // 담보 토큰 배포
-  const MockERC20 = await ethers.getContractFactory("MockCollateralToken");
-  const collateralToken = await MockERC20.deploy(
-    "Mock Token",
-    "MCK",
-    ethers.parseEther("1000000000")
-  );
-  await collateralToken.waitForDeployment();
-  const collateralTokenAddress = await collateralToken.getAddress();
-  console.log(`담보 토큰 배포: ${collateralTokenAddress}`);
+### Example Testing Process
 
-  // RangeBetMath 라이브러리 배포
-  const RangeBetMath = await ethers.getContractFactory("RangeBetMath");
-  const rangeBetMath = await RangeBetMath.deploy();
-  await rangeBetMath.waitForDeployment();
-  const rangeBetMathAddress = await rangeBetMath.getAddress();
-  console.log(`RangeBetMath 배포: ${rangeBetMathAddress}`);
+1. **Connect to Sepolia testnet**:
 
-  // RangeBetManager 배포 (라이브러리 링크)
-  const baseURI = "https://rangebet.example/api/token/";
-  const RangeBetManager = await ethers.getContractFactory("RangeBetManager", {
-    libraries: {
-      RangeBetMath: rangeBetMathAddress,
-    },
-  });
-  const rangeBetManager = await RangeBetManager.deploy(
-    collateralTokenAddress,
-    baseURI
-  );
-  await rangeBetManager.waitForDeployment();
-  const rangeBetManagerAddress = await rangeBetManager.getAddress();
-  console.log(`RangeBetManager 배포: ${rangeBetManagerAddress}`);
+   - Network ID: 11155111
+   - RPC URL: https://rpc.sepolia.org
 
-  // RangeBetToken 주소 가져오기
-  const rangeBetTokenAddress = await rangeBetManager.rangeBetToken();
-  console.log(`RangeBetToken 배포: ${rangeBetTokenAddress}`);
+2. **Test the basic flow**:
 
-  // 테스트 계정에 담보 토큰 민팅
-  const [owner, user1, user2] = await ethers.getSigners();
-  const amount = ethers.parseEther("1000");
+   - Connect wallet
+   - Check available markets
+   - Approve collateral token spending
+   - Place a bet
+   - Wait for market to close (or use an already closed market)
+   - Claim rewards
 
-  await collateralToken.mint(user1.address, amount);
-  await collateralToken.mint(user2.address, amount);
-  console.log("테스트 토큰 민팅 완료");
+3. **Testing the full integration**:
+   - Implement all UI components
+   - Connect to events
+   - Handle all possible errors
+   - Test with different user scenarios
 
-  // 테스트 마켓 생성
-  const tickSpacing = 60;
-  const minTick = -360;
-  const maxTick = 360;
-  // 마켓 종료 시간: 현재 시간으로부터 7일 후
-  const closeTime = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+### Testing Issues
 
-  const marketTx = await rangeBetManager.createMarket(
-    tickSpacing,
-    minTick,
-    maxTick,
-    closeTime
-  );
-  const marketReceipt = await marketTx.wait();
+If you encounter issues during testing, please check:
 
-  console.log(`테스트 마켓 생성 완료, ID: 0`);
-}
+1. Proper network connection
+2. Sufficient gas for transactions
+3. Correct contract addresses
+4. Proper signature of function calls
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
-```
-
-### 로컬 테스트 환경 설정
-
-```bash
-# 로컬 하드햇 노드 실행
-npx hardhat node
-
-# 새 터미널에서 컨트랙트 배포
-npx hardhat run scripts/deploy.ts --network localhost
-```
-
-### 테스트 상호작용 스크립트
-
-```typescript
-// scripts/interact.ts
-
-import { ethers } from "hardhat";
-
-async function main() {
-  // 배포된 컨트랙트 주소
-  const MANAGER_ADDRESS = "0x..."; // 배포 시 로그에서 가져온 주소
-  const TOKEN_ADDRESS = "0x...";
-  const COLLATERAL_ADDRESS = "0x...";
-
-  // 컨트랙트 인스턴스 가져오기
-  const rangeBetManager = await ethers.getContractAt(
-    "RangeBetManager",
-    MANAGER_ADDRESS
-  );
-  const rangeBetToken = await ethers.getContractAt(
-    "RangeBetToken",
-    TOKEN_ADDRESS
-  );
-  const collateralToken = await ethers.getContractAt(
-    "MockCollateralToken",
-    COLLATERAL_ADDRESS
-  );
-
-  // 계정 가져오기
-  const [owner, user1, user2] = await ethers.getSigners();
-
-  // 마켓 ID (배포 스크립트에서 생성된 ID)
-  const marketId = 0;
-
-  // 마켓 정보 출력
-  const marketInfo = await rangeBetManager.getMarketInfo(marketId);
-  console.log("마켓 상태:");
-  console.log("- 활성:", marketInfo[0]);
-  console.log("- 종료:", marketInfo[1]);
-  console.log("- 틱 간격:", marketInfo[2].toString());
-  console.log("- 최소 틱:", marketInfo[3].toString());
-  console.log("- 최대 틱:", marketInfo[4].toString());
-  console.log("- 총 공급량:", marketInfo[5].toString());
-  console.log("- 담보 잔액:", marketInfo[6].toString());
-
-  // 사용자 토큰 승인
-  const betAmount = ethers.parseEther("100");
-  await collateralToken.connect(user1).approve(MANAGER_ADDRESS, betAmount);
-  await collateralToken.connect(user2).approve(MANAGER_ADDRESS, betAmount);
-  console.log("담보 토큰 승인 완료");
-
-  // 베팅 실행
-  await rangeBetManager.connect(user1).buyTokens(
-    marketId,
-    [0], // 빈 인덱스
-    [betAmount], // 금액
-    betAmount // 최대 담보
-  );
-  console.log("User1이 빈 0에 베팅 완료");
-
-  await rangeBetManager.connect(user2).buyTokens(
-    marketId,
-    [60, -60], // 빈 인덱스
-    [betAmount / 2n, betAmount / 2n], // 각 빈에 절반씩 베팅
-    betAmount // 최대 담보
-  );
-  console.log("User2가 빈 60과 -60에 베팅 완료");
-
-  // 토큰 밸런스 확인
-  const token0Id = await rangeBetToken.encodeTokenId(marketId, 0);
-  const token60Id = await rangeBetToken.encodeTokenId(marketId, 60);
-  const tokenNeg60Id = await rangeBetToken.encodeTokenId(marketId, -60);
-
-  console.log("토큰 밸런스:");
-  console.log(
-    "- User1 (빈 0):",
-    (await rangeBetToken.balanceOf(user1.address, token0Id)).toString()
-  );
-  console.log(
-    "- User2 (빈 60):",
-    (await rangeBetToken.balanceOf(user2.address, token60Id)).toString()
-  );
-  console.log(
-    "- User2 (빈 -60):",
-    (await rangeBetToken.balanceOf(user2.address, tokenNeg60Id)).toString()
-  );
-
-  // 마켓 종료 (0을 승리 빈으로 선언)
-  await rangeBetManager.connect(owner).closeMarket(marketId, 0);
-  console.log("마켓 종료, 빈 0 승리");
-
-  // 보상 청구
-  await rangeBetManager.connect(user1).claimReward(marketId, 0);
-  console.log("User1이 보상 청구 완료");
-
-  // 최종 담보 토큰 밸런스 확인
-  console.log("최종 담보 토큰 밸런스:");
-  console.log(
-    "- User1:",
-    (await collateralToken.balanceOf(user1.address)).toString()
-  );
-  console.log(
-    "- User2:",
-    (await collateralToken.balanceOf(user2.address)).toString()
-  );
-  console.log(
-    "- RangeBetManager:",
-    (await collateralToken.balanceOf(MANAGER_ADDRESS)).toString()
-  );
-}
-
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
-```
+For help with integration issues, contact: support@rangebet.example

@@ -1,165 +1,165 @@
-# RangeBet 보안 문서
+# RangeBet Security Documentation
 
-이 문서는 RangeBet 프로토콜의 보안 고려사항, 위험 모델 및 취약점 보고 절차를 설명합니다.
+This document describes the security considerations, risk model, and vulnerability reporting procedures for the RangeBet protocol.
 
-## 목차
+## Table of Contents
 
-1. [보안 모델](#보안-모델)
-2. [잠재적 위험](#잠재적-위험)
-3. [완화 전략](#완화-전략)
-4. [코드 감사](#코드-감사)
-5. [보안 취약점 보고](#보안-취약점-보고)
-6. [버그 바운티 프로그램](#버그-바운티-프로그램)
-7. [비상 계획](#비상-계획)
+1. [Security Model](#security-model)
+2. [Potential Risks](#potential-risks)
+3. [Mitigation Strategies](#mitigation-strategies)
+4. [Code Audits](#code-audits)
+5. [Security Vulnerability Reporting](#security-vulnerability-reporting)
+6. [Bug Bounty Program](#bug-bounty-program)
+7. [Emergency Plan](#emergency-plan)
 
-## 보안 모델
+## Security Model
 
-RangeBet 프로토콜은 다음과 같은 핵심 보안 원칙을 따릅니다:
+The RangeBet protocol follows these core security principles:
 
-1. **최소 권한 원칙**: 각 컨트랙트와 함수는 작업 수행에 필요한 최소한의 권한만 가집니다.
-2. **격리 원칙**: 각 마켓은 독립적으로 운영되어 한 마켓의 취약점이 다른 마켓에 영향을 미치지 않습니다.
-3. **검증 우선**: 모든 외부 입력은 컨트랙트 로직 실행 전에 검증됩니다.
-4. **투명성**: 모든 로직과 상태 변경은 투명하며 온체인에서 검증 가능합니다.
+1. **Principle of Least Privilege**: Each contract and function has only the minimum permissions necessary to perform its task.
+2. **Principle of Isolation**: Each market operates independently, preventing vulnerabilities in one market from affecting others.
+3. **Validation First**: All external inputs are validated before contract logic is executed.
+4. **Transparency**: All logic and state changes are transparent and verifiable on-chain.
 
-### 신뢰 가정
+### Trust Assumptions
 
-RangeBet 프로토콜은 다음과 같은 신뢰 가정을 합니다:
+The RangeBet protocol makes the following trust assumptions:
 
-1. **소유자 신뢰**: 컨트랙트 소유자는 마켓 생성 및 종료 권한을 가지며, 이 권한을 악의적으로 사용하지 않는다고 가정합니다.
-2. **코드 완전성**: 스마트 컨트랙트 코드와 수학적 모델에 결함이 없다고 가정합니다.
-3. **외부 의존성**: PRBMath 라이브러리와 OpenZeppelin 라이브러리가 안전하다고 가정합니다.
+1. **Owner Trust**: The contract owner has market creation and closure authority and is assumed not to use these privileges maliciously.
+2. **Code Integrity**: The smart contract code and mathematical model are assumed to be free of defects.
+3. **External Dependencies**: The PRBMath library and OpenZeppelin libraries are assumed to be secure.
 
-## 잠재적 위험
+## Potential Risks
 
-RangeBet 프로토콜에서 식별된 주요 위험 요소는 다음과 같습니다:
+The major risk factors identified in the RangeBet protocol are:
 
-### 1. 경제적 위험
+### 1. Economic Risks
 
-- **수학적 모델 오류**: 베팅 비용 계산 공식의 오류로 인한 부정확한 가격 책정 가능성
-- **가격 조작**: 대규모 베팅을 통한 시장 가격 조작 가능성
-- **유동성 불균형**: 특정 빈에 대한 과도한 베팅으로 인한 불균형
+- **Mathematical Model Errors**: Potential inaccurate pricing due to errors in the betting cost calculation formula
+- **Price Manipulation**: Possibility of market price manipulation through large bets
+- **Liquidity Imbalance**: Imbalances caused by excessive betting on specific bins
 
-### 2. 스마트 컨트랙트 위험
+### 2. Smart Contract Risks
 
-- **재진입 공격**: 외부 호출을 통한 재진입 가능성
-- **정수 오버플로/언더플로**: 큰 숫자 처리 시 오버플로/언더플로 가능성
-- **가스 최적화 문제**: 복잡한 수학 연산으로 인한 높은 가스 비용
+- **Reentrancy Attacks**: Possibility of reentrancy through external calls
+- **Integer Overflow/Underflow**: Potential overflow/underflow when processing large numbers
+- **Gas Optimization Issues**: High gas costs due to complex mathematical operations
 
-### 3. 거버넌스 위험
+### 3. Governance Risks
 
-- **중앙화 위험**: 컨트랙트 소유자에 대한 과도한 권한 집중
-- **파라미터 설정 오류**: 부적절한 시장 파라미터 설정으로 인한 위험
+- **Centralization Risk**: Excessive concentration of authority with the contract owner
+- **Parameter Setting Errors**: Risks due to improper market parameter settings
 
-## 완화 전략
+## Mitigation Strategies
 
-RangeBet은 다음과 같은 보안 전략을 구현하여 위험을 완화합니다:
+RangeBet implements the following security strategies to mitigate risks:
 
-### 1. 경제적 위험 완화
+### 1. Economic Risk Mitigation
 
-- **수학적 모델 검증**: 베팅 비용 계산 공식에 대한 독립적인 검증 및 시뮬레이션 수행
-- **슬리피지 보호**: `maxCollateral` 매개변수를 통한 가격 영향 제한
-- **최소/최대 베팅 제한**: 과도한 시장 조작 방지
+- **Mathematical Model Verification**: Independent verification and simulation of the betting cost calculation formula
+- **Slippage Protection**: Limiting price impact through the `maxCollateral` parameter
+- **Minimum/Maximum Betting Limits**: Preventing excessive market manipulation
 
-### 2. 스마트 컨트랙트 위험 완화
+### 2. Smart Contract Risks
 
-- **비재진입 보호**: `nonReentrant` 수정자를 사용하여 주요 함수 보호
-- **SafeMath 사용**: OpenZeppelin의 SafeMath 또는 Solidity 0.8+ 내장 오버플로 보호 사용
-- **의존성 최소화**: 외부 컨트랙트와의 상호작용 최소화
+- **Reentrancy Protection**: Protecting key functions using the `nonReentrant` modifier
+- **Using SafeMath**: Using OpenZeppelin's SafeMath or Solidity 0.8+ built-in overflow protection
+- **Minimizing Dependencies**: Minimizing interactions with external contracts
 
-### 3. 거버넌스 위험 완화
+### 3. Governance Risks
 
-- **역할 분리**: 관리 기능에 다중 서명 지갑 사용
-- **투명한 파라미터 설정**: 모든 중요 파라미터 변경에 대한 이벤트 발생
-- **점진적 업그레이드**: 단계적 업그레이드 및 변경 사항 검증
+- **Separation of Roles**: Using multi-signature wallets for administrative functions
+- **Transparent Parameter Setting**: Emitting events for all important parameter changes
+- **Gradual Upgrades**: Phased upgrades and validation of changes
 
-## 코드 감사
+## Code Audits
 
-RangeBet 프로토콜은 다음과 같은 감사 단계를 거칩니다:
+The RangeBet protocol undergoes the following audit steps:
 
-1. **내부 검토**: 개발자 간 코드 검토
-2. **형식 검증**: 정형 검증 도구를 사용한 수학적 모델 검증
-3. **자동화 도구**: Slither, Mythril 등의 자동화된 보안 도구 사용
-4. **외부 감사**: 독립적인 보안 감사 회사의 검토
+1. **Internal Review**: Code review among developers
+2. **Formal Verification**: Mathematical model verification using formal verification tools
+3. **Automated Tools**: Using automated security tools such as Slither, Mythril, etc.
+4. **External Audit**: Review by independent security audit companies
 
-### 최신 감사 보고서
+### Latest Audit Reports
 
-- [예시 감사 보고서 링크] - 2023년 1분기 감사 (예정)
+- [Example Audit Report Link] - Q1 2023 Audit (Planned)
 
-## 보안 취약점 보고
+## Security Vulnerability Reporting
 
-RangeBet 프로토콜에서 보안 취약점을 발견한 경우, 다음 절차에 따라 책임감 있게 보고해 주십시오:
+If you discover a security vulnerability in the RangeBet protocol, please report it responsibly following these procedures:
 
-1. **비공개 보고**: 취약점을 공개 포럼이나 GitHub 이슈에 게시하지 마세요.
-2. **이메일 보고**: security@example.com으로 취약점 세부 정보를 보내주세요.
-3. **암호화 통신**: 필요한 경우 PGP 키를 사용하여 통신을 암호화할 수 있습니다.
+1. **Private Reporting**: Do not post vulnerabilities on public forums or GitHub issues.
+2. **Email Reporting**: Send vulnerability details to security@example.com.
+3. **Encrypted Communication**: If necessary, you can encrypt communications using a PGP key.
 
-### 보고 내용
+### Report Content
 
-보안 취약점 보고 시 다음 정보를 포함해 주세요:
+When reporting security vulnerabilities, please include the following information:
 
-1. 취약점 유형 및 설명
-2. 취약점 재현 방법
-3. 잠재적 영향
-4. 가능한 경우 완화 또는 수정 제안
+1. Type and description of the vulnerability
+2. Steps to reproduce the vulnerability
+3. Potential impact
+4. Mitigation or fix suggestions, if possible
 
-## 버그 바운티 프로그램
+## Bug Bounty Program
 
-RangeBet은 보안 취약점 식별을 장려하기 위해 버그 바운티 프로그램을 운영합니다.
+RangeBet operates a bug bounty program to encourage identification of security vulnerabilities.
 
-### 범위
+### Scope
 
-- 스마트 컨트랙트 코드
-- 수학적 모델
-- 프로토콜 로직
+- Smart contract code
+- Mathematical model
+- Protocol logic
 
-### 심각도 수준
+### Severity Levels
 
-1. **치명적**: 자금 손실 또는 시스템 무결성에 심각한 위협 (10,000 USD)
-2. **높음**: 상당한 자금 위험 또는 중요 기능 손상 (5,000 USD)
-3. **중간**: 제한된 자금 위험 또는 기능 손상 (2,000 USD)
-4. **낮음**: 사소한 문제 또는 최선의 방법 제안 (500 USD)
+1. **Critical**: Serious threat to fund loss or system integrity (10,000 USD)
+2. **High**: Significant fund risk or critical function impairment (5,000 USD)
+3. **Medium**: Limited fund risk or function impairment (2,000 USD)
+4. **Low**: Minor issues or best practice suggestions (500 USD)
 
-### 지급 방식
+### Payment Method
 
-- 버그 확인 및 심각도 평가 후 ETH 또는 스테이블코인으로 지급
-- 버그 공개 전 지급 완료
+- Payment in ETH or stablecoins after bug confirmation and severity assessment
+- Payment completed before bug disclosure
 
-## 비상 계획
+## Emergency Plan
 
-### 비상 연락처
+### Emergency Contacts
 
-긴급 보안 문제의 경우:
+For urgent security issues:
 
-- **이메일**: emergency@example.com
-- **텔레그램**: @rangebet_security
-- **전화**: +1-XXX-XXX-XXXX (24/7 가능)
+- **Email**: emergency@example.com
+- **Telegram**: @rangebet_security
+- **Phone**: +1-XXX-XXX-XXXX (available 24/7)
 
-### 비상 대응 프로세스
+### Emergency Response Process
 
-1. **알림 단계**: 보안 팀이 알림을 받고 심각도 평가
-2. **완화 단계**: 필요한 경우 컨트랙트 일시 중지 또는 긴급 수정
-3. **해결 단계**: 취약점 수정 및 검증
-4. **커뮤니케이션 단계**: 커뮤니티에 상황 업데이트 제공
-5. **사후 분석 단계**: 사고 원인 분석 및 보안 개선
+1. **Alert Phase**: Security team receives alert and assesses severity
+2. **Mitigation Phase**: Contract pause or emergency fix if necessary
+3. **Resolution Phase**: Vulnerability fix and verification
+4. **Communication Phase**: Providing situation updates to the community
+5. **Post-Analysis Phase**: Analyzing incident causes and security improvements
 
-### 컨트랙트 일시 중지
+### Contract Pausing
 
-심각한 취약점이 발견된 경우 다음 기능을 사용하여 시스템의 일부 또는 전체를 일시 중지할 수 있습니다:
+In case of serious vulnerabilities, the following functions can be used to pause part or all of the system:
 
 ```solidity
-// RangeBetManager의 비상 일시 중지 함수
+// Emergency pause function in RangeBetManager
 function emergencyPause() external onlyOwner {
-    // 구현
+    // Implementation
 }
 
-// 일시 중지 해제 함수
+// Unpause function
 function unpause() external onlyOwner {
-    // 구현
+    // Implementation
 }
 ```
 
-## 결론
+## Conclusion
 
-RangeBet 팀은 사용자 자금의 보안을 최우선으로 생각합니다. 지속적인 보안 개선과 투명한 커뮤니케이션을 통해 안전한 예측 시장 플랫폼을 제공하기 위해 노력하고 있습니다.
+The RangeBet team prioritizes the security of user funds. We strive to provide a secure prediction market platform through continuous security improvements and transparent communication.
 
-보안 질문이나 우려 사항이 있으면 security@example.com으로 문의해 주세요.
+If you have security questions or concerns, please contact security@example.com.

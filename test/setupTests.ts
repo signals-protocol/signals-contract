@@ -27,7 +27,7 @@ export async function setupTestEnvironment() {
   const minTick = -360;
   const maxTick = 360;
   let marketId: bigint;
-  // 예상 마켓 종료 시간: 현재 시간 + 7일
+  // Expected market close time: current time + 7 days
   const closeTime = BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60);
 
   // Initial collateral amounts
@@ -47,7 +47,7 @@ export async function setupTestEnvironment() {
     initialCollateral
   );
 
-  // 사용자들이 직접 토큰을 요청
+  // Users request tokens directly
   await collateralToken.connect(user1).requestTokens(userCollateral);
   await collateralToken.connect(user2).requestTokens(userCollateral);
   await collateralToken.connect(user3).requestTokens(userCollateral);

@@ -55,7 +55,7 @@ async function main() {
     const tickSpacing = 60;
     const minTick = -360;
     const maxTick = 120000;
-    // 마켓 종료 시간: 현재 시간으로부터 7일 후
+    // Market close time: current time + 7 days
     const closeTime = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
 
     const createMarketTx = await rangeBetManager.createMarket(
