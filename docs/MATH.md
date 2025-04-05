@@ -13,7 +13,7 @@ RangeBet은 시장에서 사용자가 특정 빈(bin)에 베팅할 때 가격을
 
 사용자가 특정 빈에 `x` 만큼의 토큰을 구매하려고 할 때, 비용은 다음 적분으로 계산됩니다:
 
-$$ \text{Cost} = \int\_{0}^{x} \frac{q + t}{T + t} dt $$
+![Cost = \int_{0}^{x} \frac{q + t}{T + t} dt](https://latex.codecogs.com/png.latex?Cost%20%3D%20%5Cint_%7B0%7D%5E%7Bx%7D%20%5Cfrac%7Bq%20%2B%20t%7D%7BT%20%2B%20t%7D%20dt)
 
 여기서:
 
@@ -25,23 +25,23 @@ $$ \text{Cost} = \int\_{0}^{x} \frac{q + t}{T + t} dt $$
 
 위 적분을 풀면 다음과 같습니다:
 
-$$ \text{Cost} = \int*{0}^{x} \frac{q + t}{T + t} dt = \int*{0}^{x} \frac{q - T + T + t}{T + t} dt = \int\_{0}^{x} (1 + \frac{q - T}{T + t}) dt $$
+![Integral Step 1](https://latex.codecogs.com/png.latex?%5Cint_%7B0%7D%5E%7Bx%7D%20%5Cfrac%7Bq%20%2B%20t%7D%7BT%20%2B%20t%7D%20dt%20%3D%20%5Cint_%7B0%7D%5E%7Bx%7D%20%5Cfrac%7Bq%20-%20T%20%2B%20T%20%2B%20t%7D%7BT%20%2B%20t%7D%20dt%20%3D%20%5Cint_%7B0%7D%5E%7Bx%7D%20%281%20%2B%20%5Cfrac%7Bq%20-%20T%7D%7BT%20%2B%20t%7D%29%20dt)
 
-$$ \text{Cost} = [t + (q - T) \ln(T + t)]\_{0}^{x} = x + (q - T) \ln\frac{T + x}{T} $$
+![Integral Step 2](https://latex.codecogs.com/png.latex?Cost%20%3D%20%5Bt%20%2B%20%28q%20-%20T%29%20%5Cln%28T%20%2B%20t%29%5D_%7B0%7D%5E%7Bx%7D%20%3D%20x%20%2B%20%28q%20-%20T%29%20%5Cln%5Cfrac%7BT%20%2B%20x%7D%7BT%7D)
 
 ### 특수 케이스
 
 1. 빈에 토큰이 없는 경우 (`q = 0`):
-   $$ \text{Cost} = x - T \ln\frac{T + x}{T} $$
+   ![Case q = 0](https://latex.codecogs.com/png.latex?Cost%20%3D%20x%20-%20T%20%5Cln%5Cfrac%7BT%20%2B%20x%7D%7BT%7D)
 
 2. 전체 시장과 빈의 토큰 수량이 같은 경우 (`q = T`):
-   $$ \text{Cost} = x $$
+   ![Case q = T](https://latex.codecogs.com/png.latex?Cost%20%3D%20x)
 
 3. 빈의 토큰이 시장 전체보다 많은 경우 (`q > T`):
-   $$ \text{Cost} > x $$
+   ![Case q > T](https://latex.codecogs.com/png.latex?Cost%20%3E%20x)
 
 4. 빈의 토큰이 시장 전체보다 적은 경우 (`q < T`):
-   $$ \text{Cost} < x $$
+   ![Case q < T](https://latex.codecogs.com/png.latex?Cost%20%3C%20x)
 
 ## 고정 소수점 구현
 
@@ -53,45 +53,48 @@ RangeBet은 [PRBMath](https://github.com/paulrberg/prb-math) 라이브러리를 
 
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
-import "@prb/math/contracts/PRBMath.sol";
+import { UD60x18, ud, unwrap } from "@prb/math/src/UD60x18.sol";
 
 library RangeBetMath {
-    using PRBMath for uint256;
-
-    // 가격 계산 함수 구현
     function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uint256) {
-        // 특수 케이스: q = T
-        if (q == T) {
-            return x;
-        }
+        if (x == 0) return 0;
+        if (T == 0) return x; // 특수 케이스: 시장의 첫 번째 베팅
 
-        // x + (q - T) * ln((T + x) / T)
-        uint256 cost;
+        // UD60x18로 변환
+        UD60x18 xUD = ud(x);
+        UD60x18 qUD = ud(q);
+        UD60x18 TUD = ud(T);
 
         // 첫 번째 항: x
-        cost = x;
+        UD60x18 cost = xUD;
 
-        // (T + x) / T 계산
-        uint256 ratio = (T + x).div(T);
+        // 두 번째 항: (q-T)*ln((T+x)/T)
+        if (q != T) { // q == T이면 이 부분은 0이 됨
+            // (T+x)/T 계산
+            UD60x18 ratio = (TUD + xUD) / TUD;
+            // ln((T+x)/T) 계산
+            UD60x18 logTerm = ratio.ln();
 
-        // ln((T + x) / T) 계산
-        uint256 lnRatio = ratio.log2().mul(PRBMath.LOG2_E);
-
-        // q > T 인 경우
-        if (q > T) {
-            // 두 번째 항: (q - T) * ln((T + x) / T)
-            uint256 secondTerm = (q - T).mul(lnRatio);
-            cost = cost.add(secondTerm);
-        } else {
-            // q < T 인 경우
-            // 두 번째 항: (q - T) * ln((T + x) / T), q < T 이므로 이 값은 음수
-            uint256 secondTerm = (T - q).mul(lnRatio);
-            cost = cost > secondTerm ? cost - secondTerm : 0;
+            // (q-T) 계산
+            if (q > T) {
+                // q > T이면, (q-T)*ln((T+x)/T) 더함
+                UD60x18 qMinusT = qUD - TUD;
+                cost = cost + (qMinusT * logTerm);
+            } else {
+                // q < T이면, (T-q)*ln((T+x)/T) 뺌
+                UD60x18 TMinusq = TUD - qUD;
+                // 언더플로우 방지
+                if ((TMinusq * logTerm) > cost) {
+                    return 0;
+                }
+                cost = cost - (TMinusq * logTerm);
+            }
         }
 
-        return cost;
+        // uint256으로 변환
+        return unwrap(cost);
     }
 }
 ```
@@ -107,7 +110,7 @@ library RangeBetMath {
 
 고정 소수점 연산은 가스 비용이 많이 들 수 있습니다. RangeBetMath 구현은 다음과 같은 최적화를 포함합니다:
 
-1. 특수 케이스 조기 처리 (`q = T`)
+1. 특수 케이스 조기 처리 (`q = T`, `x = 0`, `T = 0`)
 2. 부분 연산 결과 저장하여 재사용
 3. 오버플로우 방지를 위한 순서 조정
 

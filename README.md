@@ -172,11 +172,7 @@ await rangeBetManager.claimReward(marketId, winningBin);
 
 베팅 비용은 다음 적분식을 기반으로 계산됩니다:
 
-\[
-\int\_{t=0}^{x} \frac{q + t}{T + t} \,\mathrm{d}t
-\;=\;
-x + (q - T)\,\ln\!\Bigl(\frac{T + x}{T}\Bigr)
-\]
+![Integral Formula](https://latex.codecogs.com/png.latex?%5Cint_%7Bt%3D0%7D%5E%7Bx%7D%20%5Cfrac%7Bq%20%2B%20t%7D%7BT%20%2B%20t%7D%20%5C%2C%5Cmathrm%7Bd%7Dt%20%5C%3B%3D%5C%3B%20x%20%2B%20%28q%20-%20T%29%5C%2C%5Cln%5C%21%5CBigl%28%5Cfrac%7BT%20%2B%20x%7D%7BT%7D%5CBigr%29)
 
 - `q`: 현재 빈에 있는 토큰의 양
 - `T`: 시장 전체 토큰의 총 공급량

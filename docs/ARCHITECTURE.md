@@ -15,7 +15,7 @@ RangeBet은 다음 주요 컴포넌트로 구성됩니다:
                  └─────────────────┘     │
                                          │ 호출
                                          │
-┌─────────────┐   생성    ┌─────────────▼─────────┐    mint/burn    ┌───────────────┐
+┌─────────────┐   생성    ┌─────────────▼─────────┐    배포/관리    ┌───────────────┐
 │   Market 1  │◄─────────┤                        ├───────────────►│                │
 └─────────────┘           │                        │                │                │
                           │    RangeBetManager     │                │  RangeBetToken │
@@ -121,7 +121,7 @@ function claimReward(uint256 marketId, int256 binIndex) external nonReentrant
 
 ## 2. RangeBetToken (ERC1155)
 
-모든 마켓과 빈에 대한 토큰을 관리하는 ERC1155 토큰 컨트랙트입니다.
+모든 마켓과 빈에 대한 토큰을 관리하는 ERC1155 토큰 컨트랙트입니다. RangeBetManager에 의해 배포되고 관리됩니다.
 
 ### 토큰 ID 인코딩
 
@@ -164,6 +164,7 @@ function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uin
 
 2. **RangeBetManager ↔ RangeBetToken**:
 
+   - RangeBetManager는 생성자에서 RangeBetToken을 배포합니다.
    - 베팅 시 Manager는 사용자를 위한 토큰을 발행합니다.
    - 보상 청구 시 Manager는 토큰을 소각합니다.
 

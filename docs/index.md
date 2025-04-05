@@ -81,14 +81,17 @@ npx hardhat run scripts/interact.ts --network localhost
 const manager = await ethers.getContractAt("RangeBetManager", managerAddress);
 
 // 틱 간격 60, 범위 -360에서 360까지의 마켓 생성
-const tx = await manager.createMarket(60, -360, 360);
+// 마켓 종료 시간: 현재 시간으로부터 7일 후
+const closeTime = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+
+const tx = await manager.createMarket(60, -360, 360, closeTime);
 const receipt = await tx.wait();
 
 // 마켓 ID 추출
-const marketCreatedEvent = receipt.events?.find(
-  (event) => event.event === "MarketCreated"
+const marketCreatedEvent = receipt.logs.find(
+  (log) => log.fragment?.name === "MarketCreated"
 );
-const marketId = marketCreatedEvent?.args?.marketId;
+const marketId = marketCreatedEvent.args[0];
 console.log(`마켓 생성 완료, ID: ${marketId}`);
 ```
 
@@ -97,12 +100,12 @@ console.log(`마켓 생성 완료, ID: ${marketId}`);
 ```typescript
 // 담보 토큰 승인
 const collateral = await ethers.getContractAt("IERC20", collateralAddress);
-await collateral.approve(managerAddress, ethers.utils.parseEther("100"));
+await collateral.approve(managerAddress, ethers.parseEther("100"));
 
 // 빈 0에 베팅
 const binIndices = [0];
-const amounts = [ethers.utils.parseEther("10")];
-const maxCollateral = ethers.utils.parseEther("100");
+const amounts = [ethers.parseEther("10")];
+const maxCollateral = ethers.parseEther("100");
 
 // 토큰 구매
 await manager.buyTokens(marketId, binIndices, amounts, maxCollateral);
@@ -129,8 +132,8 @@ const manager = await ethers.getContractAt("RangeBetManager", "0x...");
 const token = await ethers.getContractAt("RangeBetToken", "0x...");
 
 # 마켓 정보 조회
-const market = await manager.markets(0);
-console.log(market);
+const marketInfo = await manager.getMarketInfo(0);
+console.log(marketInfo);
 ```
 
 ## 지원 및 문의

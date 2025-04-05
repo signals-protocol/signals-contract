@@ -44,9 +44,9 @@ RangeBetToken: 0x...
 ### 필요한 종속성
 
 ```bash
-npm install ethers@5.7.2
+npm install ethers@6.4.0
 # 또는
-yarn add ethers@5.7.2
+yarn add ethers@6.4.0
 ```
 
 ### 컨트랙트 인터페이스 설정
@@ -65,8 +65,8 @@ const TOKEN_ADDRESS = "0x...";
 const COLLATERAL_ADDRESS = "0x...";
 
 // 프로바이더 설정
-const provider = new ethers.providers.Web3Provider(window.ethereum);
-const signer = provider.getSigner();
+const provider = new ethers.BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
 
 // 컨트랙트 인스턴스 생성
 const managerContract = new ethers.Contract(
@@ -92,17 +92,19 @@ const collateralContract = new ethers.Contract(
 
 ```typescript
 async function getMarketInfo(marketId: number) {
-  const market = await managerContract.markets(marketId);
+  const marketInfo = await managerContract.getMarketInfo(marketId);
 
   return {
-    active: market.active,
-    closed: market.closed,
-    tickSpacing: market.tickSpacing.toNumber(),
-    minTick: market.minTick.toNumber(),
-    maxTick: market.maxTick.toNumber(),
-    totalSupply: market.T.toString(),
-    collateralBalance: market.collateralBalance.toString(),
-    winningBin: market.winningBin.toNumber(),
+    active: marketInfo[0],
+    closed: marketInfo[1],
+    tickSpacing: marketInfo[2],
+    minTick: marketInfo[3],
+    maxTick: marketInfo[4],
+    totalSupply: marketInfo[5],
+    collateralBalance: marketInfo[6],
+    winningBin: marketInfo[7],
+    openTimestamp: marketInfo[8],
+    closeTimestamp: marketInfo[9],
   };
 }
 
@@ -134,7 +136,7 @@ async function placeBet(
   // 담보 토큰 승인 (첫 번째 거래)
   const approveTx = await collateralContract.approve(
     MANAGER_ADDRESS,
-    maxCollateral
+    ethers.parseUnits(maxCollateral, 18)
   );
   await approveTx.wait();
 
@@ -142,8 +144,8 @@ async function placeBet(
   const buyTx = await managerContract.buyTokens(
     marketId,
     binIndices,
-    amounts.map((a) => ethers.utils.parseUnits(a, 18)),
-    ethers.utils.parseUnits(maxCollateral, 18)
+    amounts.map((a) => ethers.parseUnits(a, 18)),
+    ethers.parseUnits(maxCollateral, 18)
   );
 
   return await buyTx.wait();
@@ -177,13 +179,14 @@ async function withdrawAllCollateral(to: string) {
 
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 interface IRangeBetManager {
     function createMarket(
         uint256 tickSpacing,
         int256 minTick,
-        int256 maxTick
+        int256 maxTick,
+        uint256 closeTime
     ) external returns (uint256);
 
     function buyTokens(
@@ -199,7 +202,7 @@ interface IRangeBetManager {
 
     function getBinQuantity(uint256 marketId, int256 binIndex) external view returns (uint256);
 
-    function markets(uint256 marketId) external view returns (
+    function getMarketInfo(uint256 marketId) external view returns (
         bool active,
         bool closed,
         uint256 tickSpacing,
@@ -207,7 +210,9 @@ interface IRangeBetManager {
         int256 maxTick,
         uint256 T,
         uint256 collateralBalance,
-        int256 winningBin
+        int256 winningBin,
+        uint256 openTimestamp,
+        uint256 closeTimestamp
     );
 
     function withdrawAllCollateral(address to) external;
@@ -224,7 +229,7 @@ interface IRangeBetToken {
 
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IRangeBetManager.sol";
@@ -276,15 +281,15 @@ RangeBet 시스템은 다음 주요 이벤트를 발생시킵니다:
 
 ```solidity
 // 마켓 생성 이벤트
-event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick);
+event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick, uint256 openTimestamp, uint256 closeTimestamp);
 
 // 토큰 구매 이벤트
-event TokensPurchased(
+event TokensBought(
     uint256 indexed marketId,
     address indexed buyer,
     int256[] binIndices,
     uint256[] amounts,
-    uint256 collateralAmount
+    uint256 totalCost
 );
 
 // 마켓 종료 이벤트
@@ -295,9 +300,11 @@ event RewardClaimed(
     uint256 indexed marketId,
     address indexed claimer,
     int256 binIndex,
-    uint256 tokenAmount,
-    uint256 rewardAmount
+    uint256 amount
 );
+
+// 담보 인출 이벤트
+event CollateralWithdrawn(address indexed to, uint256 amount);
 ```
 
 ### 웹 애플리케이션에서 이벤트 리스닝
@@ -306,7 +313,15 @@ event RewardClaimed(
 // 마켓 생성 이벤트 리스닝
 managerContract.on(
   "MarketCreated",
-  (marketId, tickSpacing, minTick, maxTick, event) => {
+  (
+    marketId,
+    tickSpacing,
+    minTick,
+    maxTick,
+    openTimestamp,
+    closeTimestamp,
+    event
+  ) => {
     console.log(`마켓 생성: ID ${marketId}`);
     // UI 업데이트 로직
   }
@@ -314,8 +329,8 @@ managerContract.on(
 
 // 토큰 구매 이벤트 리스닝
 managerContract.on(
-  "TokensPurchased",
-  (marketId, buyer, binIndices, amounts, collateralAmount, event) => {
+  "TokensBought",
+  (marketId, buyer, binIndices, amounts, totalCost, event) => {
     console.log(`토큰 구매: 마켓 ${marketId}, 구매자 ${buyer}`);
     // UI 업데이트 로직
   }
@@ -330,10 +345,10 @@ managerContract.on("MarketClosed", (marketId, winningBin, event) => {
 // 보상 청구 이벤트 리스닝
 managerContract.on(
   "RewardClaimed",
-  (marketId, claimer, binIndex, tokenAmount, rewardAmount, event) => {
+  (marketId, claimer, binIndex, amount, event) => {
     console.log(
-      `보상 청구: 마켓 ${marketId}, 청구자 ${claimer}, 보상 ${ethers.utils.formatUnits(
-        rewardAmount,
+      `보상 청구: 마켓 ${marketId}, 청구자 ${claimer}, 보상 ${ethers.formatUnits(
+        amount,
         18
       )}`
     );
@@ -349,20 +364,20 @@ RangeBet 시스템 컨트랙트는 다음과 같은 주요 오류를 발생시�
 ```typescript
 try {
   // 컨트랙트 호출
-} catch (error) {
+} catch (error: any) {
   const errorMessage = error.message;
 
-  if (errorMessage.includes("Market not active")) {
+  if (errorMessage.includes("Market is not active")) {
     // 마켓이 활성화되지 않음
-  } else if (errorMessage.includes("Market already closed")) {
+  } else if (errorMessage.includes("Market is already closed")) {
     // 마켓이 이미 종료됨
-  } else if (errorMessage.includes("Invalid bin index")) {
+  } else if (errorMessage.includes("Bin index out of range")) {
     // 잘못된 빈 인덱스
-  } else if (errorMessage.includes("Insufficient allowance")) {
+  } else if (errorMessage.includes("ERC20: insufficient allowance")) {
     // 토큰 승인 부족
-  } else if (errorMessage.includes("Collateral too high")) {
+  } else if (errorMessage.includes("Cost exceeds max collateral")) {
     // 최대 담보 초과
-  } else if (errorMessage.includes("Not winning bin")) {
+  } else if (errorMessage.includes("Not the winning bin")) {
     // 승리 빈이 아님
   } else if (errorMessage.includes("No tokens to claim")) {
     // 청구할 토큰이 없음 (이미 청구했거나 토큰을 보유하지 않음)
@@ -385,58 +400,65 @@ import { ethers } from "hardhat";
 async function main() {
   // 담보 토큰 배포
   const MockERC20 = await ethers.getContractFactory("MockCollateralToken");
-  const collateralToken = await MockERC20.deploy("Mock Token", "MCK");
-  await collateralToken.deployed();
-  console.log(`담보 토큰 배포: ${collateralToken.address}`);
+  const collateralToken = await MockERC20.deploy(
+    "Mock Token",
+    "MCK",
+    ethers.parseEther("1000000000")
+  );
+  await collateralToken.waitForDeployment();
+  const collateralTokenAddress = await collateralToken.getAddress();
+  console.log(`담보 토큰 배포: ${collateralTokenAddress}`);
 
   // RangeBetMath 라이브러리 배포
   const RangeBetMath = await ethers.getContractFactory("RangeBetMath");
   const rangeBetMath = await RangeBetMath.deploy();
-  await rangeBetMath.deployed();
-  console.log(`RangeBetMath 배포: ${rangeBetMath.address}`);
-
-  // RangeBetToken 배포
-  const RangeBetToken = await ethers.getContractFactory("RangeBetToken");
-  const rangeBetToken = await RangeBetToken.deploy();
-  await rangeBetToken.deployed();
-  console.log(`RangeBetToken 배포: ${rangeBetToken.address}`);
+  await rangeBetMath.waitForDeployment();
+  const rangeBetMathAddress = await rangeBetMath.getAddress();
+  console.log(`RangeBetMath 배포: ${rangeBetMathAddress}`);
 
   // RangeBetManager 배포 (라이브러리 링크)
+  const baseURI = "https://rangebet.example/api/token/";
   const RangeBetManager = await ethers.getContractFactory("RangeBetManager", {
     libraries: {
-      RangeBetMath: rangeBetMath.address,
+      RangeBetMath: rangeBetMathAddress,
     },
   });
   const rangeBetManager = await RangeBetManager.deploy(
-    rangeBetToken.address,
-    collateralToken.address
+    collateralTokenAddress,
+    baseURI
   );
-  await rangeBetManager.deployed();
-  console.log(`RangeBetManager 배포: ${rangeBetManager.address}`);
+  await rangeBetManager.waitForDeployment();
+  const rangeBetManagerAddress = await rangeBetManager.getAddress();
+  console.log(`RangeBetManager 배포: ${rangeBetManagerAddress}`);
 
-  // RangeBetToken이 Manager를 인식하도록 설정
-  await rangeBetToken.setManager(rangeBetManager.address);
-  console.log("Manager 주소 설정 완료");
+  // RangeBetToken 주소 가져오기
+  const rangeBetTokenAddress = await rangeBetManager.rangeBetToken();
+  console.log(`RangeBetToken 배포: ${rangeBetTokenAddress}`);
 
   // 테스트 계정에 담보 토큰 민팅
   const [owner, user1, user2] = await ethers.getSigners();
-  const amount = ethers.utils.parseUnits("1000", 18);
+  const amount = ethers.parseEther("1000");
 
   await collateralToken.mint(user1.address, amount);
   await collateralToken.mint(user2.address, amount);
   console.log("테스트 토큰 민팅 완료");
 
   // 테스트 마켓 생성
-  const marketTx = await rangeBetManager.createMarket(60, -360, 360);
+  const tickSpacing = 60;
+  const minTick = -360;
+  const maxTick = 360;
+  // 마켓 종료 시간: 현재 시간으로부터 7일 후
+  const closeTime = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+
+  const marketTx = await rangeBetManager.createMarket(
+    tickSpacing,
+    minTick,
+    maxTick,
+    closeTime
+  );
   const marketReceipt = await marketTx.wait();
 
-  // MarketCreated 이벤트에서 marketId 추출
-  const marketCreatedEvent = marketReceipt.events?.find(
-    (event) => event.event === "MarketCreated"
-  );
-  const marketId = marketCreatedEvent?.args?.marketId;
-
-  console.log(`테스트 마켓 생성 완료, ID: ${marketId}`);
+  console.log(`테스트 마켓 생성 완료, ID: 0`);
 }
 
 main().catch((error) => {
@@ -452,7 +474,7 @@ main().catch((error) => {
 npx hardhat node
 
 # 새 터미널에서 컨트랙트 배포
-npx hardhat run scripts/localDeploy.ts --network localhost
+npx hardhat run scripts/deploy.ts --network localhost
 ```
 
 ### 테스트 상호작용 스크립트
@@ -489,18 +511,18 @@ async function main() {
   const marketId = 0;
 
   // 마켓 정보 출력
-  const market = await rangeBetManager.markets(marketId);
+  const marketInfo = await rangeBetManager.getMarketInfo(marketId);
   console.log("마켓 상태:");
-  console.log("- 활성:", market.active);
-  console.log("- 종료:", market.closed);
-  console.log("- 틱 간격:", market.tickSpacing.toString());
-  console.log("- 최소 틱:", market.minTick.toString());
-  console.log("- 최대 틱:", market.maxTick.toString());
-  console.log("- 총 공급량:", market.T.toString());
-  console.log("- 담보 잔액:", market.collateralBalance.toString());
+  console.log("- 활성:", marketInfo[0]);
+  console.log("- 종료:", marketInfo[1]);
+  console.log("- 틱 간격:", marketInfo[2].toString());
+  console.log("- 최소 틱:", marketInfo[3].toString());
+  console.log("- 최대 틱:", marketInfo[4].toString());
+  console.log("- 총 공급량:", marketInfo[5].toString());
+  console.log("- 담보 잔액:", marketInfo[6].toString());
 
   // 사용자 토큰 승인
-  const betAmount = ethers.utils.parseUnits("100", 18);
+  const betAmount = ethers.parseEther("100");
   await collateralToken.connect(user1).approve(MANAGER_ADDRESS, betAmount);
   await collateralToken.connect(user2).approve(MANAGER_ADDRESS, betAmount);
   console.log("담보 토큰 승인 완료");
@@ -517,7 +539,7 @@ async function main() {
   await rangeBetManager.connect(user2).buyTokens(
     marketId,
     [60, -60], // 빈 인덱스
-    [betAmount.div(2), betAmount.div(2)], // 각 빈에 절반씩 베팅
+    [betAmount / 2n, betAmount / 2n], // 각 빈에 절반씩 베팅
     betAmount // 최대 담보
   );
   console.log("User2가 빈 60과 -60에 베팅 완료");

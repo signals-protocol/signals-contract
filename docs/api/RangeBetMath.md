@@ -9,7 +9,7 @@ RangeBetMath는 (q+t)/(T+t) 적분을 기반으로 한 비용 계산 공식을 �
 ## 의존성
 
 ```solidity
-import "@prb/math/contracts/PRBMath.sol";
+import { UD60x18, ud, unwrap } from "@prb/math/src/UD60x18.sol";
 ```
 
 - PRBMath: 고정 소수점 수학 연산을 위한 라이브러리
@@ -20,13 +20,13 @@ import "@prb/math/contracts/PRBMath.sol";
 
 사용자가 특정 빈에 `x` 만큼의 토큰을 구매하려고 할 때, 비용은 다음 적분으로 계산됩니다:
 
-$$ \text{Cost} = \int\_{0}^{x} \frac{q + t}{T + t} dt $$
+![Cost = \int_{0}^{x} \frac{q + t}{T + t} dt](https://latex.codecogs.com/png.latex?Cost%20%3D%20%5Cint_%7B0%7D%5E%7Bx%7D%20%5Cfrac%7Bq%20%2B%20t%7D%7BT%20%2B%20t%7D%20dt)
 
 ### 최종 공식
 
 적분을 풀면 다음과 같은 공식이 도출됩니다:
 
-$$ \text{Cost} = x + (q - T) \ln\frac{T + x}{T} $$
+![Cost = x + (q - T) \ln\frac{T + x}{T}](https://latex.codecogs.com/png.latex?Cost%20%3D%20x%20%2B%20%28q%20-%20T%29%20%5Cln%5Cfrac%7BT%20%2B%20x%7D%7BT%7D)
 
 여기서:
 
@@ -69,36 +69,42 @@ function calculateCost(
 
 ```solidity
 function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uint256) {
-    // 특수 케이스: q = T
-    if (q == T) {
-        return x;
-    }
+    if (x == 0) return 0;
+    if (T == 0) return x; // 특수 케이스: 시장의 첫 번째 베팅
 
-    // x + (q - T) * ln((T + x) / T)
-    uint256 cost;
+    // UD60x18로 변환
+    UD60x18 xUD = ud(x);
+    UD60x18 qUD = ud(q);
+    UD60x18 TUD = ud(T);
 
     // 첫 번째 항: x
-    cost = x;
+    UD60x18 cost = xUD;
 
-    // (T + x) / T 계산
-    uint256 ratio = PRBMath.mulDiv(T + x, PRBMath.SCALE, T);
+    // 두 번째 항: (q-T)*ln((T+x)/T)
+    if (q != T) { // q == T이면 이 부분은 0이 됨
+        // (T+x)/T 계산
+        UD60x18 ratio = (TUD + xUD) / TUD;
+        // ln((T+x)/T) 계산
+        UD60x18 logTerm = ratio.ln();
 
-    // ln((T + x) / T) 계산
-    uint256 lnRatio = PRBMath.ln(ratio);
-
-    // q > T 인 경우
-    if (q > T) {
-        // 두 번째 항: (q - T) * ln((T + x) / T)
-        uint256 secondTerm = PRBMath.mulDiv(q - T, lnRatio, PRBMath.SCALE);
-        cost = cost + secondTerm;
-    } else {
-        // q < T 인 경우
-        // 두 번째 항: (q - T) * ln((T + x) / T), q < T 이므로 이 값은 음수
-        uint256 secondTerm = PRBMath.mulDiv(T - q, lnRatio, PRBMath.SCALE);
-        cost = cost > secondTerm ? cost - secondTerm : 0;
+        // (q-T) 계산
+        if (q > T) {
+            // q > T이면, (q-T)*ln((T+x)/T) 더함
+            UD60x18 qMinusT = qUD - TUD;
+            cost = cost + (qMinusT * logTerm);
+        } else {
+            // q < T이면, (T-q)*ln((T+x)/T) 뺌
+            UD60x18 TMinusq = TUD - qUD;
+            // 언더플로우 방지
+            if ((TMinusq * logTerm) > cost) {
+                return 0;
+            }
+            cost = cost - (TMinusq * logTerm);
+        }
     }
 
-    return cost;
+    // uint256으로 변환
+    return unwrap(cost);
 }
 ```
 
@@ -111,8 +117,7 @@ function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uin
 import "./RangeBetMath.sol";
 
 contract RangeBetManager {
-    // RangeBetMath 라이브러리 사용
-    using RangeBetMath for uint256;
+    // RangeBetMath 라이브러리 사용 설정
 
     // ...
 
@@ -120,7 +125,7 @@ contract RangeBetManager {
         uint256 amount,
         uint256 binQuantity,
         uint256 totalSupply
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         // RangeBetMath 라이브러리를 사용하여 비용 계산
         return RangeBetMath.calculateCost(amount, binQuantity, totalSupply);
     }
@@ -156,11 +161,9 @@ contract ExampleContract {
 
 ### 가스 최적화
 
-RangeBetMath 라이브러리는 복잡한 수학 연산을 포함하므로 가스 비용이 상당할 수 있습니다. 다음과 같은 최적화가
+RangeBetMath 라이브러리는 복잡한 수학 연산을 포함하므로 가스 비용이 상당할 수 있습니다. 다음과 같은 최적화가 적용되었습니다:
 
-적용되었습니다:
-
-1. 특수 케이스 조기 처리 (`q = T`)
+1. 특수 케이스 조기 처리 (`q = T`, `x = 0`, `T = 0`)
 2. 부분 연산 결과 저장하여 재사용
 3. PRBMath의 최적화된 고정 소수점 연산 사용
 

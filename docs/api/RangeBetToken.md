@@ -5,7 +5,7 @@
 ## 상수
 
 ```solidity
-uint256 private constant OFFSET = 2**127;
+uint256 private constant OFFSET = 1e9;
 ```
 
 - `OFFSET`: 음수 빈 인덱스를 처리하기 위한 오프셋 값
@@ -21,7 +21,8 @@ address public manager;
 ## 이벤트
 
 ```solidity
-event ManagerSet(address indexed manager);
+event TokenMinted(address indexed to, uint256 indexed tokenId, uint256 amount);
+event TokenBurned(address indexed from, uint256 indexed tokenId, uint256 amount);
 ```
 
 ## 수정자
@@ -35,55 +36,53 @@ modifier onlyManager()
 ## 생성자
 
 ```solidity
-constructor() ERC1155("")
+constructor(string memory uri_, address manager_) ERC1155(uri_)
 ```
 
-빈 URI로 ERC1155 토큰을 초기화합니다.
-
-## 관리 함수
-
-### setManager
-
-```solidity
-function setManager(address _manager) external
-```
-
-RangeBetManager 컨트랙트 주소를 설정합니다.
+지정된 URI로 ERC1155 토큰을 초기화하고 manager 주소를 설정합니다.
 
 #### 매개변수
 
-- `_manager`: 새로운 매니저 주소
-
-#### 조건
-
-- `manager`가 아직 설정되지 않았거나, 함수 호출자가 현재 `manager`여야 합니다.
-- 새 매니저 주소는 0 주소가 아니어야 합니다.
-
-#### 이벤트
-
-- `ManagerSet`: 매니저 주소 설정 시 발생합니다.
+- `uri_`: 토큰 메타데이터의 기본 URI
+- `manager_`: 매니저 컨트랙트 주소
 
 ## 토큰 관리 함수
 
 ### mint
 
 ```solidity
-function mint(
-    address account,
-    uint256 marketId,
-    int256 binIndex,
-    uint256 amount
-) external onlyManager
+function mint(address to, uint256 id, uint256 amount) external onlyManager
 ```
 
-특정 마켓의 특정 빈에 대한 토큰을 발행합니다.
+특정 토큰 ID에 해당하는 토큰을 발행합니다.
 
 #### 매개변수
 
-- `account`: 토큰을 받을 주소
-- `marketId`: 마켓 ID
-- `binIndex`: 빈 인덱스
+- `to`: 토큰을 받을 주소
+- `id`: 토큰 ID (마켓 ID와 빈 인덱스가 인코딩됨)
 - `amount`: 발행할 토큰 수량
+
+#### 조건
+
+- 함수 호출자가 `manager`여야 합니다.
+
+#### 이벤트
+
+- `TokenMinted`: 토큰 발행 시 발생합니다.
+
+### mintBatch
+
+```solidity
+function mintBatch(address to, uint256[] calldata ids, uint256[] calldata amounts) external onlyManager
+```
+
+여러 토큰 ID에 대한 토큰을 한 번에 발행합니다.
+
+#### 매개변수
+
+- `to`: 토큰을 받을 주소
+- `ids`: 토큰 ID 배열
+- `amounts`: 각 토큰 ID에 대해 발행할 수량 배열
 
 #### 조건
 
@@ -92,26 +91,24 @@ function mint(
 ### burn
 
 ```solidity
-function burn(
-    address account,
-    uint256 marketId,
-    int256 binIndex,
-    uint256 amount
-) external onlyManager
+function burn(address from, uint256 id, uint256 amount) external onlyManager
 ```
 
-특정 마켓의 특정 빈에 대한 토큰을 소각합니다.
+특정 주소에서 특정 토큰 ID의 토큰을 소각합니다.
 
 #### 매개변수
 
-- `account`: 토큰을 소각할 주소
-- `marketId`: 마켓 ID
-- `binIndex`: 빈 인덱스
+- `from`: 토큰을 소각할 주소
+- `id`: 토큰 ID
 - `amount`: 소각할 토큰 수량
 
 #### 조건
 
 - 함수 호출자가 `manager`여야 합니다.
+
+#### 이벤트
+
+- `TokenBurned`: 토큰 소각 시 발생합니다.
 
 ## 토큰 ID 인코딩/디코딩 함수
 
@@ -164,47 +161,30 @@ function decodeTokenId(uint256 tokenId) public pure returns (uint256 marketId, i
 마켓 ID와 빈 인덱스는 다음과 같이 추출됩니다:
 
 ```
-marketId = tokenId >> 128
-binIndex = int256((tokenId & ((1 << 128) - 1)) - OFFSET)
+marketId = tokenId >> 128;
+binIndex = int256(tokenId & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF) - int256(OFFSET);
 ```
 
-## ERC1155 확장 함수
+## 관리 함수
 
-### uri
+### setManager
 
 ```solidity
-function uri(uint256 tokenId) public view override returns (string memory)
+function setManager(address newManager) external onlyManager
 ```
 
-토큰 메타데이터 URI를 반환합니다. 현재는 구현되지 않았으며 빈 문자열을 반환합니다.
+매니저 주소를 새 주소로 업데이트합니다. 현재 매니저만 이 함수를 호출할 수 있습니다.
 
 #### 매개변수
 
-- `tokenId`: URI를 조회할 토큰 ID
+- `newManager`: 새로운 매니저 주소
 
-#### 반환값
+#### 조건
 
-- 토큰 메타데이터 URI 문자열
-
-## 오류 코드
-
-```solidity
-error ManagerAlreadySet();
-error NotManager();
-error ZeroAddressNotAllowed();
-```
+- 함수 호출자가 현재 `manager`여야 합니다.
+- 새 매니저 주소는 0 주소가 아니어야 합니다.
 
 ## 사용 예시
-
-### 매니저 설정
-
-```solidity
-// 컨트랙트 인스턴스 가져오기
-RangeBetToken token = RangeBetToken(tokenAddress);
-
-// 매니저 설정 (초기 배포 시)
-token.setManager(managerAddress);
-```
 
 ### 토큰 ID 인코딩/디코딩
 
@@ -241,7 +221,16 @@ function buyTokens(...) external {
     // ... 비용 계산 등
 
     // 토큰 발행
-    rangeBetToken.mint(msg.sender, marketId, binIndex, amount);
+    uint256[] memory tokenIds = new uint256[](binIndices.length);
+    uint256[] memory mintedAmounts = new uint256[](binIndices.length);
+
+    for (uint256 i = 0; i < binIndices.length; i++) {
+        tokenIds[i] = rangeBetToken.encodeTokenId(marketId, binIndices[i]);
+        mintedAmounts[i] = amounts[i];
+    }
+
+    // 배치 발행 실행
+    rangeBetToken.mintBatch(msg.sender, tokenIds, mintedAmounts);
 
     // ...
 }
@@ -251,12 +240,18 @@ function buyTokens(...) external {
 
 ```solidity
 // RangeBetManager 내부 구현 예시
-function claimReward(...) external {
+function claimReward(uint256 marketId, int256 binIndex) external {
     // ... 보상 계산 등
 
-    // 토큰 소각
-    rangeBetToken.burn(msg.sender, marketId, binIndex, amount);
+    // 토큰 ID 계산
+    uint256 tokenId = rangeBetToken.encodeTokenId(marketId, binIndex);
 
-    // ...
+    // 사용자의 토큰 밸런스 조회
+    uint256 userBalance = rangeBetToken.balanceOf(msg.sender, tokenId);
+
+    // 토큰 소각
+    rangeBetToken.burn(msg.sender, tokenId, userBalance);
+
+    // ... 보상 전송
 }
 ```
