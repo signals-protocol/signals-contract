@@ -182,7 +182,7 @@ This formula means that the betting cost adjusts according to the market's liqui
 
 ## Developer Documentation
 
-For more detailed development documentation, refer to the [docs/](./docs/) directory.
+For more detailed development documentation, refer to the [docs/](./docs/index.md) directory.
 
 ## License
 
