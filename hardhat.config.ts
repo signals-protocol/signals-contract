@@ -14,6 +14,10 @@ const ROOTSTOCK_TESTNET_URL = "https://public-node.testnet.rsk.co";
 const POLYGON_AMOY_URL =
   process.env.POLYGON_AMOY_URL || "https://rpc-amoy.polygon.technology";
 
+// Polygon Mainnet RPC URL
+const POLYGON_MAINNET_URL =
+  process.env.POLYGON_MAINNET_URL || "https://polygon-rpc.com";
+
 // Citrea Testnet RPC URL
 const CITREA_TESTNET_URL =
   process.env.CITREA_TESTNET_URL || "https://rpc.testnet.citrea.xyz";
@@ -49,6 +53,12 @@ const config: HardhatUserConfig = {
       chainId: 80002,
       gasPrice: "auto",
     },
+    polygon: {
+      url: POLYGON_MAINNET_URL,
+      accounts: [PRIVATE_KEY],
+      chainId: 137,
+      gasPrice: "auto",
+    },
     citreaTestnet: {
       url: CITREA_TESTNET_URL,
       accounts: [PRIVATE_KEY],
@@ -57,8 +67,14 @@ const config: HardhatUserConfig = {
     },
   },
   gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
+    enabled: true,
     currency: "USD",
+    coinmarketcap: process.env.COINMARKETCAP_API_KEY,
+    token: "POL",
+    gasPriceApi:
+      "https://api.polygonscan.com/api?module=proxy&action=eth_gasPrice",
+    showTimeSpent: true,
+    showMethodSig: true,
   },
   paths: {
     sources: "./contracts",

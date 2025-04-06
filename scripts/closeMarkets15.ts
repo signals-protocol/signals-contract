@@ -19,6 +19,8 @@ async function main() {
     rangeBetManagerAddress = process.env.RSK_RANGE_BET_MANAGER || "";
   } else if (network.name === "polygonAmoy") {
     rangeBetManagerAddress = process.env.POLYGON_AMOY_RANGE_BET_MANAGER || "";
+  } else if (network.name === "polygon") {
+    rangeBetManagerAddress = process.env.POLYGON_RANGE_BET_MANAGER || "";
   } else if (network.name === "citreaTestnet") {
     rangeBetManagerAddress = process.env.CITREA_RANGE_BET_MANAGER || "";
   }
