@@ -172,13 +172,13 @@ library RangeBetMath {
         
         if (q != T) {
             // Since T >= q, we know (q - T) <= 0, so we subtract
-            UD60x18 TMinusq = TUD.sub(qUD);
-            
-            // Prevent underflow - if the log term is too large compared to x, error
-            require(TMinusq.mul(logTerm) <= revenue, "Underflow in sell calculation");
-            
-            revenue = revenue.sub(TMinusq.mul(logTerm));
-        }
+                UD60x18 TMinusq = TUD.sub(qUD);
+                
+                // Prevent underflow - if the log term is too large compared to x, error
+                require(TMinusq.mul(logTerm) <= revenue, "Underflow in sell calculation");
+                
+                revenue = revenue.sub(TMinusq.mul(logTerm));
+            }
         // If q == T, the (q - T) term is 0, so revenue = x
 
         return unwrap(revenue);
