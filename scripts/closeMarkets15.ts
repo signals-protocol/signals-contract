@@ -23,6 +23,8 @@ async function main() {
     rangeBetManagerAddress = process.env.POLYGON_RANGE_BET_MANAGER || "";
   } else if (network.name === "citreaTestnet") {
     rangeBetManagerAddress = process.env.CITREA_RANGE_BET_MANAGER || "";
+  } else if (network.name === "megaethTestnet") {
+    rangeBetManagerAddress = process.env.MEGAETH_RANGE_BET_MANAGER || "";
   }
 
   // Fixed market ID range

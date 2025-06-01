@@ -22,6 +22,10 @@ const POLYGON_MAINNET_URL =
 const CITREA_TESTNET_URL =
   process.env.CITREA_TESTNET_URL || "https://rpc.testnet.citrea.xyz";
 
+// MegaETH Testnet RPC URL
+const MEGAETH_TESTNET_URL =
+  process.env.MEGAETH_TESTNET_URL || "https://carrot.megaeth.com/rpc";
+
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.28",
@@ -63,6 +67,12 @@ const config: HardhatUserConfig = {
       url: CITREA_TESTNET_URL,
       accounts: [PRIVATE_KEY],
       chainId: 5115,
+      gasPrice: "auto",
+    },
+    megaethTestnet: {
+      url: MEGAETH_TESTNET_URL,
+      accounts: [PRIVATE_KEY],
+      chainId: 6342,
       gasPrice: "auto",
     },
   },
