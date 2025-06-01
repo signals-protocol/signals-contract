@@ -41,6 +41,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     // Events
     event MarketCreated(uint256 indexed marketId, uint256 tickSpacing, int256 minTick, int256 maxTick, uint256 openTimestamp, uint256 closeTimestamp);
     event TokensBought(uint256 indexed marketId, address indexed buyer, int256[] binIndices, uint256[] amounts, uint256 totalCost);
+    event TokensSold(uint256 indexed marketId, address indexed seller, int256[] binIndices, uint256[] amounts, uint256 totalRevenue);
     event MarketClosed(uint256 indexed marketId, int256 winningBin);
     event RewardClaimed(uint256 indexed marketId, address indexed claimer, int256 binIndex, uint256 amount);
     event CollateralWithdrawn(address indexed to, uint256 amount);
@@ -226,6 +227,85 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         rangeBetToken.mintBatch(msg.sender, tokenIds, mintedAmounts);
         
         emit TokensBought(marketId, msg.sender, binIndices, amounts, totalCost);
+    }
+
+    /**
+     * @dev Sells tokens in multiple bins for a specific market
+     * @param marketId The ID of the market
+     * @param binIndices Array of bin indices where tokens will be sold
+     * @param amounts Array of token amounts to sell for each bin
+     * @param minRevenue Minimum amount of collateral the user expects to receive
+     */
+    function sellTokens(
+        uint256 marketId,
+        int256[] calldata binIndices,
+        uint256[] calldata amounts,
+        uint256 minRevenue
+    ) external nonReentrant {
+        Market storage market = markets[marketId];
+        require(market.active, "Market is not active");
+        require(!market.closed, "Market is closed");
+        require(binIndices.length == amounts.length, "Array lengths must match");
+        require(binIndices.length > 0, "Must sell at least one bin");
+        
+        uint256 totalRevenue = 0;
+        uint256 Tcurrent = market.T;
+        
+        // 1) Prepare: create tokenIds and burnAmounts arrays
+        uint256 len = binIndices.length;
+        uint256[] memory tokenIds = new uint256[](len);
+        uint256[] memory burnAmounts = new uint256[](len);
+        
+        // 2) Process each bin
+        for (uint256 i = 0; i < len; i++) {
+            int256 binIndex = binIndices[i];
+            uint256 amount = amounts[i];
+            
+            // Skip if amount is 0
+            if (amount == 0) continue;
+            
+            require(binIndex % int256(market.tickSpacing) == 0, "Bin index must be a multiple of tick spacing");
+            require(binIndex >= market.minTick && binIndex <= market.maxTick, "Bin index out of range");
+            
+            // Check user has enough tokens to sell
+            uint256 tokenId = rangeBetToken.encodeTokenId(marketId, binIndex);
+            uint256 userBalance = rangeBetToken.balanceOf(msg.sender, tokenId);
+            require(userBalance >= amount, "Insufficient token balance");
+            
+            // Calculate revenue for this bin
+            uint256 qBin = market.q[binIndex];
+            require(qBin >= amount, "Not enough tokens in bin to sell");
+            
+            uint256 revenue = RangeBetMath.calculateSellCost(amount, qBin, Tcurrent);
+            
+            // Update state
+            market.q[binIndex] = qBin - amount;
+            Tcurrent -= amount;
+            totalRevenue += revenue;
+            
+            // Save tokenId and burnAmount
+            tokenIds[i] = tokenId;
+            burnAmounts[i] = amount;
+        }
+        
+        // Check if the revenue meets the user's minimum expectation
+        require(totalRevenue >= minRevenue, "Revenue below minimum expected");
+        
+        // Update market state
+        market.T = Tcurrent;
+        market.collateralBalance -= totalRevenue;
+        
+        // Execute individual burn operations
+        for (uint256 i = 0; i < len; i++) {
+            if (burnAmounts[i] > 0) {
+                rangeBetToken.burn(msg.sender, tokenIds[i], burnAmounts[i]);
+            }
+        }
+        
+        // Transfer collateral to user
+        collateralToken.safeTransfer(msg.sender, totalRevenue);
+        
+        emit TokensSold(marketId, msg.sender, binIndices, amounts, totalRevenue);
     }
 
     /**

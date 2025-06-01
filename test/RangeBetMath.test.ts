@@ -222,17 +222,17 @@ describe("RangeBetMath", function () {
       const T = ethers.parseEther("1000");
 
       await expect(rangeBetMath.calculateSellCost(x, q, T)).to.be.revertedWith(
-        "Cannot sell more tokens than total supply"
+        "Bin quantity cannot exceed total supply"
       );
     });
 
-    it("Should revert when trying to sell exactly T (edge case)", async function () {
+    it("Should handle selling exactly T when q=T", async function () {
       const T = ethers.parseEther("1000");
       const q = T;
 
-      await expect(rangeBetMath.calculateSellCost(T, q, T)).to.be.revertedWith(
-        "Cannot sell entire market supply (T=x)"
-      );
+      // When q=T and x=T, this should return T (not revert)
+      const revenue = await rangeBetMath.calculateSellCost(T, q, T);
+      expect(revenue).to.equal(T);
     });
 
     it("Should return exactly x for q=T case", async function () {
@@ -250,12 +250,15 @@ describe("RangeBetMath", function () {
       expect(revenue).to.be.lt(x);
     });
 
-    it("Should return more than x for q>T case", async function () {
+    it("Should revert for q>T case (invalid state)", async function () {
       const x = ethers.parseEther("50");
       const q = ethers.parseEther("150");
       const T = ethers.parseEther("100");
-      const revenue = await rangeBetMath.calculateSellCost(x, q, T);
-      expect(revenue).to.be.gt(x);
+
+      // q > T is an invalid state and should revert
+      await expect(rangeBetMath.calculateSellCost(x, q, T)).to.be.revertedWith(
+        "Bin quantity cannot exceed total supply"
+      );
     });
 
     it("Should handle basic buy then sell scenario", async function () {

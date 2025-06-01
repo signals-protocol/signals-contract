@@ -16,6 +16,9 @@ library RangeBetMath {
      * @param q Current quantity of tokens in the bin
      * @param T Total supply of tokens in the market
      * @return cost Cost in collateral tokens
+     * 
+     * Note: After buying, the new state will be q' = q + x and T' = T + x
+     * The domain constraint T >= q is maintained in normal operation
      */
     function calculateCost(uint256 x, uint256 q, uint256 T) public pure returns (uint256) {
         if (x == 0) return 0;
@@ -38,11 +41,11 @@ library RangeBetMath {
             
             // Calculate (q-T)
             if (q > T) {
-                // If q > T, add (q-T)*ln((T+x)/T)
+                // If q > T (should be rare in normal operation), add (q-T)*ln((T+x)/T)
                 UD60x18 qMinusT = qUD - TUD;
                 cost = cost + (qMinusT * logTerm);
             } else {
-                // If q < T, subtract (T-q)*ln((T+x)/T)
+                // If q < T (normal case), subtract (T-q)*ln((T+x)/T)
                 UD60x18 TMinusq = TUD - qUD;
                 // Make sure we don't underflow
                 if ((TMinusq * logTerm) > cost) {
@@ -132,9 +135,7 @@ library RangeBetMath {
      *      Formula: ∫(q - t)/(T - t) dt = x + (q - T) * ln(T / (T - x))
      *
      * Requirements:
-     * - x <= q (cannot sell more than bin's tokens)
-     * - x <= T (cannot sell more than total supply)
-     * - T > x (to avoid ln(T/0))
+     * - T >= q >= x (domain constraint: total supply >= bin quantity >= sell amount)
      */
     function calculateSellCost(uint256 x, uint256 q, uint256 T)
         public
@@ -146,12 +147,16 @@ library RangeBetMath {
             return 0; // If sell amount is 0, return 0 revenue
         }
         
-        // If x > q or x > T, the sale is impossible
+        // Domain validation: T >= q >= x
         require(x <= q, "Cannot sell more tokens than available in bin");
-        require(x <= T, "Cannot sell more tokens than total supply");
+        require(q <= T, "Bin quantity cannot exceed total supply");
         
-        // If T == x, the logarithm would have 0 in denominator, which is mathematically impossible
-        require(x < T, "Cannot sell entire market supply (T=x)");
+        // Special case: If x == T, we're selling the entire market supply
+        // This can only happen if q == T (the bin contains all tokens)
+        if (x == T) {
+            require(q == T, "Can only sell entire supply if bin contains all tokens");
+            return T; // When selling all tokens, return the total supply value
+        }
 
         // 2) Convert to fixed-point
         UD60x18 xUD = ud(x);
@@ -166,20 +171,15 @@ library RangeBetMath {
         UD60x18 revenue = xUD;
         
         if (q != T) {
-            if (q > T) {
-                // If q > T, the (q - T) term is positive, so add
-                UD60x18 qMinusT = qUD.sub(TUD);
-                revenue = revenue.add(qMinusT.mul(logTerm));
-            } else {
-                // If q < T, the (q - T) term is negative, so subtract
-                UD60x18 TMinusq = TUD.sub(qUD);
-                
-                // Prevent underflow - if the log term is too large compared to x, error
-                require(TMinusq.mul(logTerm) <= revenue, "Underflow in sell calculation");
-                
-                revenue = revenue.sub(TMinusq.mul(logTerm));
-            }
+            // Since T >= q, we know (q - T) <= 0, so we subtract
+            UD60x18 TMinusq = TUD.sub(qUD);
+            
+            // Prevent underflow - if the log term is too large compared to x, error
+            require(TMinusq.mul(logTerm) <= revenue, "Underflow in sell calculation");
+            
+            revenue = revenue.sub(TMinusq.mul(logTerm));
         }
+        // If q == T, the (q - T) term is 0, so revenue = x
 
         return unwrap(revenue);
     }
