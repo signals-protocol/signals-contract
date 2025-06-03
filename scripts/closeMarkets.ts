@@ -1,6 +1,6 @@
 import { ethers, network } from "hardhat";
 import * as dotenv from "dotenv";
-import { getExpectedPrice, getMarketTrend } from "./marketTrends";
+import { getExpectedPrice } from "./marketTrends";
 
 // Load environment variables
 dotenv.config();
@@ -115,21 +115,8 @@ async function main() {
       const maxTick = Number(marketInfo[4]);
       const tickSpacing = Number(marketInfo[2]);
 
-      // 트렌드 정보 출력
-      const trend = getMarketTrend(currentMarketId);
-      if (trend) {
-        console.log(
-          `Trend: ${trend.direction} (intensity: ${trend.intensity}/10)`
-        );
-        console.log(`Description: ${trend.description}`);
-      } else {
-        console.log("No trend data available, using default calculation");
-      }
-
-      // 트렌드 데이터를 기반으로 실제 가격 가져오기
       const expectedPrice = getExpectedPrice(currentMarketId);
 
-      // 기본값 설정 (데이터가 없는 경우)
       let actualPrice = expectedPrice;
       if (!actualPrice) {
         // 데이터가 없으면 중간값 사용
