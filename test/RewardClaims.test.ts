@@ -41,8 +41,8 @@ describe("Reward Claims", function () {
   });
 
   it("Should allow users to claim rewards from winning bin", async function () {
-    // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(0);
+    // Close the market with price 30 (falls in bin 0)
+    await env.rangeBetManager.closeMarket(30);
 
     // Get collateral balance before claiming
     const user1BalanceBefore = await env.collateralToken.balanceOf(
@@ -80,8 +80,8 @@ describe("Reward Claims", function () {
   });
 
   it("Should not allow claiming from non-winning bins", async function () {
-    // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(0);
+    // Close the market with price 30 (falls in bin 0)
+    await env.rangeBetManager.closeMarket(30);
 
     // Try to claim from bin 60 (not winning)
     await expect(
@@ -95,8 +95,8 @@ describe("Reward Claims", function () {
   });
 
   it("Should not allow claiming twice", async function () {
-    // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(0);
+    // Close the market with price 30 (falls in bin 0)
+    await env.rangeBetManager.closeMarket(30);
 
     // User1 claims rewards first time
     await env.rangeBetManager.connect(env.user1).claimReward(env.marketId, 0);
@@ -108,8 +108,8 @@ describe("Reward Claims", function () {
   });
 
   it("Should burn tokens after claiming", async function () {
-    // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(0);
+    // Close the market with price 30 (falls in bin 0)
+    await env.rangeBetManager.closeMarket(30);
 
     // Check token balance before claiming
     const tokenId = await env.rangeBetToken.encodeTokenId(env.marketId, 0);
@@ -144,8 +144,8 @@ describe("Reward Claims", function () {
 
   // Additional test: Attempt to claim rewards when user has no tokens
   it("Should revert when user has no tokens", async function () {
-    // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(0);
+    // Close the market with price 30 (falls in bin 0)
+    await env.rangeBetManager.closeMarket(30);
 
     // User4 has no tokens but tries to claim
     await expect(

@@ -309,10 +309,33 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Closes the next market in sequence and sets the winning bin
-     * @param winningBin The bin that won (where the actual value landed)
+     * @dev Converts a price to the corresponding bin index
+     * @param price The actual price value
+     * @param tickSpacing The tick spacing of the market
+     * @return binIndex The bin index that contains the price
      */
-    function closeMarket(int256 winningBin) external onlyOwner {
+    function priceToBinIndex(int256 price, uint256 tickSpacing) public pure returns (int256 binIndex) {
+        // Calculate which bin the price falls into
+        // Bin index a represents the range [a, a + tickSpacing)
+        // So we need to find the largest multiple of tickSpacing that is <= price
+        if (price >= 0) {
+            binIndex = (price / int256(tickSpacing)) * int256(tickSpacing);
+        } else {
+            // For negative prices, we need to handle rounding differently
+            // to ensure the bin contains the price
+            int256 quotient = price / int256(tickSpacing);
+            if (price % int256(tickSpacing) != 0) {
+                quotient -= 1; // Round down for negative numbers
+            }
+            binIndex = quotient * int256(tickSpacing);
+        }
+    }
+
+    /**
+     * @dev Closes the next market in sequence and sets the winning bin based on actual price
+     * @param actualPrice The actual price value where the market settled
+     */
+    function closeMarket(int256 actualPrice) external onlyOwner {
         // Calculate the next market ID to close
         uint256 marketId;
         
@@ -330,8 +353,12 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         Market storage market = markets[marketId];
         require(market.active, "Market is not active");
         require(!market.closed, "Market is already closed");
-        require(winningBin % int256(market.tickSpacing) == 0, "Winning bin must be a multiple of tick spacing");
-        require(winningBin >= market.minTick && winningBin <= market.maxTick, "Winning bin out of range");
+        
+        // Convert price to bin index
+        int256 winningBin = priceToBinIndex(actualPrice, market.tickSpacing);
+        
+        // Validate that the winning bin is within the market range
+        require(winningBin >= market.minTick && winningBin <= market.maxTick, "Price is outside market range");
         
         market.closed = true;
         market.winningBin = winningBin;

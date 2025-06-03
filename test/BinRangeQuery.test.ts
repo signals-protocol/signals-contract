@@ -225,7 +225,7 @@ describe("Bin Range Query", function () {
 
       // Reactivate and close the market
       await env.rangeBetManager.activateMarket(env.marketId);
-      await env.rangeBetManager.closeMarket(0);
+      await env.rangeBetManager.closeMarket(30); // Price 30 falls in bin 0
 
       // Should return 0 for closed market
       const calculatedX2 = await env.rangeBetManager.calculateXForBin(

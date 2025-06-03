@@ -41,8 +41,8 @@ describe("Market Close", function () {
   });
 
   it("Should allow owner to close a market and set winning bin", async function () {
-    // Close the market and set bin 0 as winner
-    await env.rangeBetManager.closeMarket(0);
+    // Close the market with price 30 (which falls in bin 0)
+    await env.rangeBetManager.closeMarket(30);
 
     // Check market is closed
     const marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
@@ -62,15 +62,16 @@ describe("Market Close", function () {
     ).to.be.revertedWith("Market is closed");
   });
 
-  it("Should fail to close a market with invalid winning bin", async function () {
-    // Try to close with a winning bin that's not a multiple of tickSpacing
-    await expect(env.rangeBetManager.closeMarket(61)).to.be.revertedWith(
-      "Winning bin must be a multiple of tick spacing"
+  it("Should fail to close a market with price outside range", async function () {
+    // Try to close with a price outside the market range
+    // Market range is [-360, 360], so price 500 would be outside
+    await expect(env.rangeBetManager.closeMarket(500)).to.be.revertedWith(
+      "Price is outside market range"
     );
 
-    // Try to close with a winning bin outside the range
-    await expect(env.rangeBetManager.closeMarket(420)).to.be.revertedWith(
-      "Winning bin out of range"
+    // Try to close with a negative price outside the range
+    await expect(env.rangeBetManager.closeMarket(-500)).to.be.revertedWith(
+      "Price is outside market range"
     );
   });
 
@@ -79,19 +80,19 @@ describe("Market Close", function () {
     // Deactivate the market
     await env.rangeBetManager.deactivateMarket(env.marketId);
 
-    // Try to close the inactive market
-    await expect(env.rangeBetManager.closeMarket(0)).to.be.revertedWith(
+    // Try to close the inactive market with price 30
+    await expect(env.rangeBetManager.closeMarket(30)).to.be.revertedWith(
       "Market is not active"
     );
   });
 
   // Additional test: Attempt to close a market that is already closed (closed=true)
   it("Should not allow closing an already closed market", async function () {
-    // Close the market first time
-    await env.rangeBetManager.closeMarket(0);
+    // Close the market first time with price 30
+    await env.rangeBetManager.closeMarket(30);
 
-    // Try to close it again
-    await expect(env.rangeBetManager.closeMarket(60)).to.be.revertedWith(
+    // Try to close it again with price 90
+    await expect(env.rangeBetManager.closeMarket(90)).to.be.revertedWith(
       "No more markets to close"
     );
   });
@@ -102,8 +103,8 @@ describe("Market Close", function () {
     const initialLastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(initialLastClosed).to.equal(ethers.MaxUint256); // max uint256 value
 
-    // Close the market
-    await env.rangeBetManager.closeMarket(0);
+    // Close the market with price 30
+    await env.rangeBetManager.closeMarket(30);
 
     // Check updated value
     const updatedLastClosed = await env.rangeBetManager.getLastClosedMarketId();

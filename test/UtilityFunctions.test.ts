@@ -49,7 +49,7 @@ describe("Utility Functions", function () {
         );
 
       // Close the market
-      await env.rangeBetManager.closeMarket(0);
+      await env.rangeBetManager.closeMarket(30); // Price 30 falls in bin 0
 
       // Calculate cost should return 0
       const cost = await env.rangeBetManager.calculateBinCost(

@@ -289,7 +289,7 @@ describe("Sell Tokens Operations", function () {
           ethers.parseEther("150")
         );
 
-      await env.rangeBetManager.closeMarket(0);
+      await env.rangeBetManager.closeMarket(30); // Price 30 falls in bin 0
 
       await expect(
         env.rangeBetManager

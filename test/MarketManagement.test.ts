@@ -81,7 +81,7 @@ describe("Market Management", function () {
   // Additional test: Attempt to activate/deactivate a closed market
   it("Should not allow activating or deactivating a closed market", async function () {
     // Close the market first
-    await env.rangeBetManager.closeMarket(0);
+    await env.rangeBetManager.closeMarket(30); // Price 30 falls in bin 0
 
     // Attempt to deactivate a closed market
     await expect(

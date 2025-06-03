@@ -1,6 +1,6 @@
 import { ethers, network } from "hardhat";
 import * as dotenv from "dotenv";
-import { calculateWinningBinFromTrend, getMarketTrend } from "./marketTrends";
+import { getExpectedPrice, getMarketTrend } from "./marketTrends";
 
 // Load environment variables
 dotenv.config();
@@ -126,22 +126,27 @@ async function main() {
         console.log("No trend data available, using default calculation");
       }
 
-      // 트렌드 데이터를 기반으로 위닝빈 계산
-      const winningBin = calculateWinningBinFromTrend(
-        currentMarketId,
-        minTick,
-        maxTick,
-        tickSpacing
-      );
+      // 트렌드 데이터를 기반으로 실제 가격 가져오기
+      const expectedPrice = getExpectedPrice(currentMarketId);
+
+      // 기본값 설정 (데이터가 없는 경우)
+      let actualPrice = expectedPrice;
+      if (!actualPrice) {
+        // 데이터가 없으면 중간값 사용
+        actualPrice = Math.floor((minTick + maxTick) / 2);
+        console.log("No price data available, using middle price");
+      }
 
       console.log(
         `Market range: ${minTick} to ${maxTick} (spacing: ${tickSpacing})`
       );
-      console.log(`Calculated winning bin: ${winningBin}`);
+      console.log(`Expected price: ${actualPrice}`);
 
       // Submit transaction to close market
-      console.log(`Closing market ${currentMarketId}...`);
-      const tx = await rangeBetManager.closeMarket(winningBin);
+      console.log(
+        `Closing market ${currentMarketId} with price ${actualPrice}...`
+      );
+      const tx = await rangeBetManager.closeMarket(actualPrice);
       const receipt = await tx.wait();
 
       if (receipt) {
@@ -170,4 +175,3 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
-

@@ -76,8 +76,8 @@ describe("Sequential Market Close", function () {
     const initialLastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(initialLastClosed).to.equal(ethers.MaxUint256); // max uint256 value
 
-    // Close first market (marketId = 0)
-    await env.rangeBetManager.closeMarket(0);
+    // Close first market (marketId = 0) with price 30 (falls in bin 0)
+    await env.rangeBetManager.closeMarket(30);
     let lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(0);
 
@@ -85,8 +85,8 @@ describe("Sequential Market Close", function () {
     let marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
     expect(marketInfo[1]).to.be.true; // closed = true
 
-    // Close second market (marketId = 1)
-    await env.rangeBetManager.closeMarket(60);
+    // Close second market (marketId = 1) with price 90 (falls in bin 60)
+    await env.rangeBetManager.closeMarket(90);
     lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(1);
 
@@ -94,8 +94,8 @@ describe("Sequential Market Close", function () {
     marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId1);
     expect(marketInfo[1]).to.be.true; // closed = true
 
-    // Close third market (marketId = 2)
-    await env.rangeBetManager.closeMarket(-60);
+    // Close third market (marketId = 2) with price -30 (falls in bin -60)
+    await env.rangeBetManager.closeMarket(-30);
     lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(2);
 
@@ -109,7 +109,7 @@ describe("Sequential Market Close", function () {
     await env.rangeBetManager.deactivateMarket(env.marketId);
 
     // Try to close deactivated market - should fail
-    await expect(env.rangeBetManager.closeMarket(0)).to.be.revertedWith(
+    await expect(env.rangeBetManager.closeMarket(30)).to.be.revertedWith(
       "Market is not active"
     );
 
@@ -120,28 +120,28 @@ describe("Sequential Market Close", function () {
     // Reactivate market
     await env.rangeBetManager.activateMarket(env.marketId);
 
-    // Close first market (should work now)
-    await env.rangeBetManager.closeMarket(0);
+    // Close first market (should work now) with price 30
+    await env.rangeBetManager.closeMarket(30);
 
     // Verify lastClosedMarketId is updated
     lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(0);
 
     // Verify next market is automatically targeted
-    // Close second market
-    await env.rangeBetManager.closeMarket(60);
+    // Close second market with price 90
+    await env.rangeBetManager.closeMarket(90);
     lastClosed = await env.rangeBetManager.getLastClosedMarketId();
     expect(lastClosed).to.equal(1);
   });
 
   it("Should return appropriate error when no more markets to close", async function () {
     // Close all markets
-    await env.rangeBetManager.closeMarket(0); // Market 0
-    await env.rangeBetManager.closeMarket(60); // Market 1
-    await env.rangeBetManager.closeMarket(-60); // Market 2
+    await env.rangeBetManager.closeMarket(30); // Market 0 (price 30 -> bin 0)
+    await env.rangeBetManager.closeMarket(90); // Market 1 (price 90 -> bin 60)
+    await env.rangeBetManager.closeMarket(-30); // Market 2 (price -30 -> bin -60)
 
     // Try closing again when no more markets - should fail
-    await expect(env.rangeBetManager.closeMarket(0)).to.be.revertedWith(
+    await expect(env.rangeBetManager.closeMarket(30)).to.be.revertedWith(
       "No more markets to close"
     );
   });
@@ -160,11 +160,11 @@ describe("Sequential Market Close", function () {
     expect(marketCount).to.equal(5);
 
     // Close markets sequentially
-    await env.rangeBetManager.closeMarket(0); // Market 0
-    await env.rangeBetManager.closeMarket(60); // Market 1
-    await env.rangeBetManager.closeMarket(-60); // Market 2
-    await env.rangeBetManager.closeMarket(0); // Market 3
-    await env.rangeBetManager.closeMarket(60); // Market 4
+    await env.rangeBetManager.closeMarket(30); // Market 0 (price 30 -> bin 0)
+    await env.rangeBetManager.closeMarket(90); // Market 1 (price 90 -> bin 60)
+    await env.rangeBetManager.closeMarket(-30); // Market 2 (price -30 -> bin -60)
+    await env.rangeBetManager.closeMarket(30); // Market 3 (price 30 -> bin 0)
+    await env.rangeBetManager.closeMarket(90); // Market 4 (price 90 -> bin 60)
 
     // Verify last closed market ID
     const lastClosed = await env.rangeBetManager.getLastClosedMarketId();
