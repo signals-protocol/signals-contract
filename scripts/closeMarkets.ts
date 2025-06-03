@@ -7,7 +7,7 @@ dotenv.config();
 
 // ===== 설정 상수 =====
 // 닫을 마켓의 개수를 여기서 설정하세요
-const MARKETS_TO_CLOSE = 2;
+const MARKETS_TO_CLOSE = 3;
 
 async function main() {
   console.log(`Attempting to close ${MARKETS_TO_CLOSE} markets...`);

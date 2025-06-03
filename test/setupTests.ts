@@ -47,13 +47,20 @@ export async function setupTestEnvironment() {
     initialCollateral
   );
 
-  // Users request tokens directly
-  await collateralToken.connect(user1).requestTokens(userCollateral);
-  await collateralToken.connect(user2).requestTokens(userCollateral);
-  await collateralToken.connect(user3).requestTokens(userCollateral);
-  // User4 gets very small amount for testing insufficient balance scenario
-  await collateralToken.connect(user4).requestTokens(ethers.parseEther("1"));
-  await collateralToken.connect(user5).requestTokens(userCollateral);
+  // Users claim free mint and get additional tokens from owner
+  await collateralToken.connect(user1).claimFreeMint();
+  await collateralToken.connect(user2).claimFreeMint();
+  await collateralToken.connect(user3).claimFreeMint();
+  await collateralToken.connect(user4).claimFreeMint();
+  await collateralToken.connect(user5).claimFreeMint();
+
+  // Owner mints additional tokens to users for testing
+  const freeMintAmount = await collateralToken.freeMintAmount();
+  await collateralToken.mintTo(user1.address, userCollateral - freeMintAmount);
+  await collateralToken.mintTo(user2.address, userCollateral - freeMintAmount);
+  await collateralToken.mintTo(user3.address, userCollateral - freeMintAmount);
+  // User4 gets very small amount for testing insufficient balance scenario (only free mint)
+  await collateralToken.mintTo(user5.address, userCollateral - freeMintAmount);
 
   // Deploy RangeBetMath library
   const RangeBetMathFactory = await ethers.getContractFactory("RangeBetMath");
