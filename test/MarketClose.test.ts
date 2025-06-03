@@ -46,8 +46,9 @@ describe("Market Close", function () {
 
     // Check market is closed
     const marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
-    expect(marketInfo[1]).to.be.true; // closed = true
-    expect(marketInfo[7]).to.equal(0); // winningBin = 0
+    expect(marketInfo.closed).to.be.true;
+    expect(marketInfo.winningBin).to.equal(0);
+    expect(marketInfo.finalPrice).to.equal(30);
 
     // Try to buy tokens in closed market
     await expect(

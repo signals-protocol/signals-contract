@@ -15,7 +15,7 @@ describe("Market Management", function () {
 
     // Check market is inactive
     let marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
-    expect(marketInfo[0]).to.be.false; // active = false
+    expect(marketInfo.active).to.be.false;
 
     // Try to buy tokens in inactive market
     await expect(
@@ -34,7 +34,7 @@ describe("Market Management", function () {
 
     // Check market is active again
     marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
-    expect(marketInfo[0]).to.be.true; // active = true
+    expect(marketInfo.active).to.be.true;
 
     // Now buying should work
     await env.rangeBetManager
@@ -54,28 +54,28 @@ describe("Market Management", function () {
 
     // Check market is inactive
     let marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
-    expect(marketInfo[0]).to.be.false; // active = false
+    expect(marketInfo.active).to.be.false;
 
     // Second deactivation
     await env.rangeBetManager.deactivateMarket(env.marketId);
 
     // Check market is still inactive
     marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
-    expect(marketInfo[0]).to.be.false; // active = false
+    expect(marketInfo.active).to.be.false;
   });
 
   // Additional test: Calling activateMarket on already active market
   it("Should allow activating an already active market (idempotent operation)", async function () {
     // Market is active by default after creation
     let marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
-    expect(marketInfo[0]).to.be.true; // active = true
+    expect(marketInfo.active).to.be.true;
 
     // Activate anyway
     await env.rangeBetManager.activateMarket(env.marketId);
 
     // Check market is still active
     marketInfo = await env.rangeBetManager.getMarketInfo(env.marketId);
-    expect(marketInfo[0]).to.be.true; // active = true
+    expect(marketInfo.active).to.be.true;
   });
 
   // Additional test: Attempt to activate/deactivate a closed market

@@ -25,7 +25,9 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         int256 maxTick;          // Maximum tick (inclusive), e.g., 360
         uint256 T;               // Total supply of tokens in the market
         uint256 collateralBalance; // Total collateral balance in the market
+        uint256 totalRewardPool; // Total reward pool when market closed (for reward calculations)
         int256 winningBin;       // The winning bin (set when market is closed)
+        int256 finalPrice;       // The final price when market is closed
         uint256 openTimestamp;   // Market creation (open) timestamp
         uint256 closeTimestamp;  // Time when the market is scheduled to close (metadata)
         mapping(int256 => uint256) q; // Quantity of tokens in each bin
@@ -43,7 +45,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     event TokensBought(uint256 indexed marketId, address indexed buyer, int256[] binIndices, uint256[] amounts, uint256 totalCost);
     event TokensSold(uint256 indexed marketId, address indexed seller, int256[] binIndices, uint256[] amounts, uint256 totalRevenue);
     event MarketClosed(uint256 indexed marketId, int256 winningBin);
-    event RewardClaimed(uint256 indexed marketId, address indexed claimer, int256 binIndex, uint256 amount);
+    event RewardClaimed(uint256 indexed marketId, address indexed claimer, int256 binIndex, uint256 tokenAmount, uint256 rewardAmount);
     event CollateralWithdrawn(address indexed to, uint256 amount);
 
     /**
@@ -362,6 +364,8 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         
         market.closed = true;
         market.winningBin = winningBin;
+        market.finalPrice = actualPrice;
+        market.totalRewardPool = market.collateralBalance;
         
         // Update the last closed market ID
         lastClosedMarketId = marketId;
@@ -370,24 +374,28 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Claims reward for a winning position
+     * @dev Claims rewards for a winning position in a market
      * @param marketId The ID of the market
-     * @param binIndex The bin index for which to claim rewards
+     * @param tokenAmount The amount of tokens to claim rewards for (0 means claim all)
      */
-    function claimReward(uint256 marketId, int256 binIndex) external nonReentrant {
+    function claimReward(uint256 marketId, uint256 tokenAmount) external nonReentrant {
         Market storage market = markets[marketId];
         require(market.closed, "Market is not closed");
-        require(binIndex == market.winningBin, "Not the winning bin");
         
-        uint256 tokenId = rangeBetToken.encodeTokenId(marketId, binIndex);
+        int256 winningBin = market.winningBin;
+        uint256 tokenId = rangeBetToken.encodeTokenId(marketId, winningBin);
         uint256 userBalance = rangeBetToken.balanceOf(msg.sender, tokenId);
         require(userBalance > 0, "No tokens to claim");
         
-        uint256 totalWinningTokens = market.q[binIndex];
-        uint256 reward = (userBalance * market.collateralBalance) / totalWinningTokens;
+        // If tokenAmount is 0, claim all tokens
+        uint256 claimAmount = tokenAmount == 0 ? userBalance : tokenAmount;
+        require(userBalance >= claimAmount, "Insufficient tokens to claim");
         
-        // Burn the tokens - this naturally prevents double claiming since the balance will be 0 after claiming
-        rangeBetToken.burn(msg.sender, tokenId, userBalance);
+        uint256 totalWinningTokens = market.q[winningBin];
+        uint256 reward = (claimAmount * market.totalRewardPool) / totalWinningTokens;
+        
+        // Burn the specified amount of tokens
+        rangeBetToken.burn(msg.sender, tokenId, claimAmount);
         
         // Update market state
         market.collateralBalance -= reward;
@@ -395,7 +403,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         // Transfer the reward
         collateralToken.safeTransfer(msg.sender, reward);
         
-        emit RewardClaimed(marketId, msg.sender, binIndex, reward);
+        emit RewardClaimed(marketId, msg.sender, winningBin, claimAmount, reward);
     }
 
     /**
@@ -429,6 +437,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
      * @return T The total supply of tokens in the market
      * @return collateralBalance The total collateral balance in the market
      * @return winningBin The winning bin (0 if not set)
+     * @return finalPrice The final price when market is closed (0 if not closed)
      * @return openTimestamp The timestamp when the market was created
      * @return closeTimestamp The scheduled time when the market will close
      */
@@ -441,6 +450,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         uint256 T,
         uint256 collateralBalance,
         int256 winningBin,
+        int256 finalPrice,
         uint256 openTimestamp,
         uint256 closeTimestamp
     ) {
@@ -454,6 +464,7 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
             market.T,
             market.collateralBalance,
             market.winningBin,
+            market.finalPrice,
             market.openTimestamp,
             market.closeTimestamp
         );

@@ -25,15 +25,15 @@ describe("Market Creation", function () {
     const marketInfo = await env.rangeBetManager.getMarketInfo(1); // Market ID 1 (second market)
 
     // Check parameters
-    expect(marketInfo[0]).to.be.true; // active
-    expect(marketInfo[1]).to.be.false; // closed
-    expect(marketInfo[2]).to.equal(120); // tickSpacing
-    expect(marketInfo[3]).to.equal(-720); // minTick
-    expect(marketInfo[4]).to.equal(720); // maxTick
-    expect(marketInfo[5]).to.equal(0); // T (total supply)
-    expect(marketInfo[6]).to.equal(0); // collateralBalance
-    expect(marketInfo[8]).to.not.equal(0); // openTimestamp should not be 0
-    expect(marketInfo[9]).to.equal(closeTime); // closeTimestamp
+    expect(marketInfo.active).to.be.true;
+    expect(marketInfo.closed).to.be.false;
+    expect(marketInfo.tickSpacing).to.equal(120);
+    expect(marketInfo.minTick).to.equal(-720);
+    expect(marketInfo.maxTick).to.equal(720);
+    expect(marketInfo.T).to.equal(0);
+    expect(marketInfo.collateralBalance).to.equal(0);
+    expect(marketInfo.openTimestamp).to.not.equal(0);
+    expect(marketInfo.closeTimestamp).to.equal(closeTime);
   });
 
   it("Should fail with invalid tick parameters", async function () {
@@ -127,8 +127,8 @@ describe("Market Creation", function () {
       });
 
       // Markets should be active and not closed
-      expect(marketInfo[0]).to.be.true; // active
-      expect(marketInfo[1]).to.be.false; // closed
+      expect(marketInfo.active).to.be.true;
+      expect(marketInfo.closed).to.be.false;
 
       // Check parameters match what we set
       const params =
@@ -141,11 +141,11 @@ describe("Market Creation", function () {
             }
           : marketParams[i];
 
-      expect(marketInfo[2]).to.equal(params.tickSpacing); // tickSpacing
-      expect(marketInfo[3]).to.equal(params.minTick); // minTick
-      expect(marketInfo[4]).to.equal(params.maxTick); // maxTick
-      expect(marketInfo[8]).to.not.equal(0); // openTimestamp should not be 0
-      expect(marketInfo[9]).to.equal(params.closeTime); // closeTimestamp
+      expect(marketInfo.tickSpacing).to.equal(params.tickSpacing);
+      expect(marketInfo.minTick).to.equal(params.minTick);
+      expect(marketInfo.maxTick).to.equal(params.maxTick);
+      expect(marketInfo.openTimestamp).to.not.equal(0);
+      expect(marketInfo.closeTimestamp).to.equal(params.closeTime);
     }
   });
 
@@ -169,8 +169,8 @@ describe("Market Creation", function () {
     // Verify timestamps
     expect(emittedOpenTimestamp).to.not.equal(0);
     expect(emittedCloseTimestamp).to.equal(closeTime);
-    expect(marketInfo[8]).to.equal(emittedOpenTimestamp); // openTimestamp
-    expect(marketInfo[9]).to.equal(emittedCloseTimestamp); // closeTimestamp
+    expect(marketInfo.openTimestamp).to.equal(emittedOpenTimestamp);
+    expect(marketInfo.closeTimestamp).to.equal(emittedCloseTimestamp);
   });
 
   it("Should create multiple markets in batch with correct parameters", async function () {
@@ -227,15 +227,15 @@ describe("Market Creation", function () {
       });
 
       // Check parameters
-      expect(marketInfo[0]).to.be.true; // active
-      expect(marketInfo[1]).to.be.false; // closed
-      expect(marketInfo[2]).to.equal(tickSpacings[i]); // tickSpacing
-      expect(marketInfo[3]).to.equal(minTicks[i]); // minTick
-      expect(marketInfo[4]).to.equal(maxTicks[i]); // maxTick
-      expect(marketInfo[5]).to.equal(0); // T (total supply)
-      expect(marketInfo[6]).to.equal(0); // collateralBalance
-      expect(marketInfo[8]).to.not.equal(0); // openTimestamp should not be 0
-      expect(marketInfo[9]).to.equal(closeTimes[i]); // closeTimestamp
+      expect(marketInfo.active).to.be.true;
+      expect(marketInfo.closed).to.be.false;
+      expect(marketInfo.tickSpacing).to.equal(tickSpacings[i]);
+      expect(marketInfo.minTick).to.equal(minTicks[i]);
+      expect(marketInfo.maxTick).to.equal(maxTicks[i]);
+      expect(marketInfo.T).to.equal(0);
+      expect(marketInfo.collateralBalance).to.equal(0);
+      expect(marketInfo.openTimestamp).to.not.equal(0);
+      expect(marketInfo.closeTimestamp).to.equal(closeTimes[i]);
     }
   });
 
