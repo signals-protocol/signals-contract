@@ -353,7 +353,6 @@ contract RangeBetManager is Ownable, ReentrancyGuard {
         require(marketId < marketCount, "No more markets to close");
         
         Market storage market = markets[marketId];
-        require(market.active, "Market is not active");
         require(!market.closed, "Market is already closed");
         
         // Convert price to bin index

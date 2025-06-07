@@ -10,6 +10,7 @@
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.14",
     "@openzeppelin/contracts": "^5.2.0",
     "@typechain/ethers-v6": "^0.5.0",
     "@typechain/hardhat": "^9.0.0",
@@ -71,11 +72,24 @@
     "check-balance:citrea": "hardhat run scripts/dev/checkBalance.ts --network citreaTestnet",
     "check-balance:rsk": "hardhat run scripts/dev/checkBalance.ts --network rskTestnet",
     "check-balance:megaeth": "hardhat run scripts/dev/checkBalance.ts --network megaethTestnet",
+    "market-deactivate-create:local": "COMMAND=deactivate-and-create hardhat run scripts/marketManager.ts --network localhost",
+    "market-deactivate-create:rsk": "COMMAND=deactivate-and-create hardhat run scripts/marketManager.ts --network rskTestnet",
+    "market-deactivate-create:amoy": "COMMAND=deactivate-and-create hardhat run scripts/marketManager.ts --network polygonAmoy",
+    "market-deactivate-create:polygon": "COMMAND=deactivate-and-create hardhat run scripts/marketManager.ts --network polygon",
+    "market-deactivate-create:citrea": "COMMAND=deactivate-and-create hardhat run scripts/marketManager.ts --network citreaTestnet",
+    "market-deactivate-create:megaeth": "COMMAND=deactivate-and-create hardhat run scripts/marketManager.ts --network megaethTestnet",
+    "market-activate-close:local": "COMMAND=activate-and-close hardhat run scripts/marketManager.ts --network localhost",
+    "market-activate-close:rsk": "COMMAND=activate-and-close hardhat run scripts/marketManager.ts --network rskTestnet",
+    "market-activate-close:amoy": "COMMAND=activate-and-close hardhat run scripts/marketManager.ts --network polygonAmoy",
+    "market-activate-close:polygon": "COMMAND=activate-and-close hardhat run scripts/marketManager.ts --network polygon",
+    "market-activate-close:citrea": "COMMAND=activate-and-close hardhat run scripts/marketManager.ts --network citreaTestnet",
+    "market-activate-close:megaeth": "COMMAND=activate-and-close hardhat run scripts/marketManager.ts --network megaethTestnet",
     "clean": "hardhat clean",
     "format": "prettier --write \"contracts/**/*.sol\" \"test/**/*.ts\" \"scripts/**/*.ts\"",
     "lint": "solhint \"contracts/**/*.sol\""
   },
   "dependencies": {
-    "@prb/math": "^4.1.0"
+    "@prb/math": "^4.1.0",
+    "axios": "^1.9.0"
   }
 }
